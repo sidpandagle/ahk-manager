@@ -1,0 +1,2892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AHK Manager</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <style>
+/* AHK Manager — Design Tokens & Globals
+   Dark-only, developer-tool aesthetic. VS Code / Linear / terminal energy. */
+
+:root {
+  /* ── Surfaces (deepest → raised) ─────────────────────────────── */
+  --bg-0: #08080b;       /* app shell behind everything */
+  --bg-1: #0d0d11;       /* main canvas */
+  --bg-2: #121218;       /* panels, sidebar */
+  --bg-3: #181820;       /* raised cards, table */
+  --bg-4: #1f1f29;       /* hover */
+  --bg-5: #272732;       /* selected, active row */
+
+  /* ── Borders ─────────────────────────────────────────────────── */
+  --border: #20202a;
+  --border-strong: #2d2d39;
+  --border-focus: var(--accent);
+
+  /* ── Text ────────────────────────────────────────────────────── */
+  --text-0: #ededf0;     /* primary */
+  --text-1: #a4a4b0;     /* secondary */
+  --text-2: #6b6b78;     /* tertiary, descriptions */
+  --text-3: #44444f;     /* disabled, separators in text */
+
+  /* ── Accent (themeable via tweaks) ───────────────────────────── */
+  --accent: #7c5cff;
+  --accent-hi: #9277ff;
+  --accent-lo: #5e3fe6;
+  --accent-soft: rgba(124, 92, 255, 0.14);
+  --accent-ring: rgba(124, 92, 255, 0.32);
+
+  /* ── Semantic ────────────────────────────────────────────────── */
+  --success: #2ee68a;       /* running dot */
+  --success-soft: rgba(46, 230, 138, 0.12);
+  --success-ring: rgba(46, 230, 138, 0.28);
+  --warning: #ffb340;
+  --warning-soft: rgba(255, 179, 64, 0.14);
+  --danger: #ff5570;
+  --danger-soft: rgba(255, 85, 112, 0.14);
+
+  /* Action-type pill colors */
+  --tag-send: #6dd3ff;
+  --tag-run: #c197ff;
+  --tag-top: #ffb96b;
+  --tag-custom: #2ee68a;
+
+  /* ── Radii ───────────────────────────────────────────────────── */
+  --r-1: 4px;
+  --r-2: 6px;
+  --r-3: 8px;
+  --r-4: 10px;
+  --r-5: 14px;
+
+  /* ── Spacing scale (tight) ───────────────────────────────────── */
+  --s-1: 4px;
+  --s-2: 6px;
+  --s-3: 8px;
+  --s-4: 12px;
+  --s-5: 16px;
+  --s-6: 20px;
+  --s-7: 28px;
+
+  /* ── Type ────────────────────────────────────────────────────── */
+  --font-sans: "Geist", "Inter", -apple-system, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, monospace;
+
+  /* ── Shadows ─────────────────────────────────────────────────── */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-3: 0 12px 32px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.3);
+  --shadow-modal: 0 24px 80px rgba(0, 0, 0, 0.7), 0 4px 16px rgba(0, 0, 0, 0.4);
+
+  /* Row height — themed by density */
+  --row-h: 36px;
+  --pad-y: 8px;
+}
+
+/* Density variants */
+[data-density="tight"] {
+  --row-h: 32px;
+  --pad-y: 6px;
+}
+[data-density="comfy"] {
+  --row-h: 44px;
+  --pad-y: 12px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg-0);
+  color: var(--text-0);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "ss01", "cv11";
+  overflow: hidden;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: default;
+}
+
+input, textarea, select {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  outline: 0;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--text-0);
+}
+
+/* Scrollbars — minimal */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--bg-4);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--bg-5);
+  background-clip: content-box;
+  border: 2px solid transparent;
+}
+
+/* ── App shell ───────────────────────────────────────────────────── */
+.app {
+  display: grid;
+  grid-template-rows: 36px 1fr 52px;
+  height: 100vh;
+  background: var(--bg-1);
+}
+
+/* ── Title bar (custom window chrome) ────────────────────────────── */
+.titlebar {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: 0 var(--s-3) 0 var(--s-4);
+  background: linear-gradient(180deg, #0f0f15, #0a0a0e);
+  border-bottom: 1px solid var(--border);
+  -webkit-app-region: drag;
+  font-size: 12px;
+  color: var(--text-1);
+  user-select: none;
+}
+.titlebar-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-weight: 600;
+  color: var(--text-0);
+  letter-spacing: -0.005em;
+}
+.titlebar-logo-mark {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  background:
+    linear-gradient(135deg, var(--accent), var(--accent-hi));
+  position: relative;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.04em;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.18) inset, 0 2px 6px var(--accent-ring);
+}
+.titlebar-trail {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.win-ctrl {
+  width: 32px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  color: var(--text-1);
+  border-radius: var(--r-1);
+}
+.win-ctrl:hover { background: var(--bg-3); color: var(--text-0); }
+.win-ctrl.close:hover { background: var(--danger); color: #fff; }
+.titlebar-meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-2);
+  padding-left: var(--s-4);
+  border-left: 1px solid var(--border);
+  margin-left: var(--s-3);
+}
+
+/* ── Main split ──────────────────────────────────────────────────── */
+.main {
+  display: grid;
+  grid-template-columns: 232px 1fr;
+  min-height: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────────── */
+.sidebar {
+  background: var(--bg-2);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.sidebar-head {
+  padding: var(--s-5) var(--s-4) var(--s-3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.sidebar-head-title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.sidebar-head-count {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-3);
+}
+.sidebar-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 var(--s-2) var(--s-3);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.profile-item {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-2);
+  color: var(--text-1);
+  cursor: default;
+  position: relative;
+  user-select: none;
+  font-size: 13px;
+}
+.profile-item:hover { background: var(--bg-3); color: var(--text-0); }
+.profile-item.active {
+  background: var(--bg-3);
+  color: var(--text-0);
+}
+.profile-item.active::before {
+  content: "";
+  position: absolute;
+  left: -2px;
+  top: 7px;
+  bottom: 7px;
+  width: 2px;
+  background: var(--accent);
+  border-radius: 0 2px 2px 0;
+}
+.profile-item .pi-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-3);
+  flex-shrink: 0;
+}
+.profile-item.running .pi-dot {
+  background: var(--success);
+  box-shadow: 0 0 0 3px var(--success-soft);
+}
+.profile-item .pi-name {
+  flex: 1;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.profile-item .pi-count {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-3);
+}
+.profile-item .pi-actions {
+  display: none;
+  gap: 2px;
+}
+.profile-item:hover .pi-actions { display: flex; }
+.pi-action-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+  color: var(--text-2);
+}
+.pi-action-btn:hover { background: var(--bg-5); color: var(--text-0); }
+.pi-action-btn.apply-btn:hover { background: var(--success-soft); color: var(--success); }
+.pi-action-btn.stop-btn {
+  display: grid;
+  margin-left: auto;
+  color: var(--success);
+  background: var(--success-soft);
+}
+.pi-action-btn.stop-btn:hover { background: var(--danger-soft); color: var(--danger); }
+.sidebar-foot {
+  padding: var(--s-3) var(--s-3) var(--s-4);
+  border-top: 1px solid var(--border);
+}
+
+/* ── Content panel ───────────────────────────────────────────────── */
+.content {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 0;
+  background: var(--bg-1);
+}
+.content-head {
+  padding: var(--s-5) var(--s-6) var(--s-4);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-5);
+  border-bottom: 1px solid var(--border);
+}
+.profile-title {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+.profile-title .editable:hover {
+  background: var(--bg-3);
+  border-radius: var(--r-2);
+  cursor: text;
+}
+.profile-sub {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}
+.profile-sub .sep {
+  color: var(--text-3);
+}
+
+/* ── Status pill ─────────────────────────────────────────────────── */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: 4px 10px 4px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  border: 1px solid var(--border);
+  background: var(--bg-3);
+  color: var(--text-1);
+}
+.status-pill .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-2);
+  flex-shrink: 0;
+}
+.status-pill.running {
+  color: var(--success);
+  background: var(--success-soft);
+  border-color: var(--success-ring);
+}
+.status-pill.running .dot {
+  background: var(--success);
+  box-shadow: 0 0 0 3px var(--success-ring);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 3px var(--success-ring); }
+  50% { box-shadow: 0 0 0 5px transparent; }
+}
+
+/* ── Body — table + preview ──────────────────────────────────────── */
+.body {
+  display: grid;
+  grid-template-columns: 1fr;
+  min-height: 0;
+  overflow: hidden;
+}
+.body.with-preview {
+  grid-template-columns: 1fr 420px;
+}
+.table-wrap {
+  overflow: auto;
+  padding: var(--s-5) var(--s-6) var(--s-5);
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  margin-bottom: var(--s-4);
+}
+.toolbar .search {
+  flex: 1;
+  max-width: 320px;
+}
+.toolbar .spacer { flex: 1; }
+
+/* ── Table ───────────────────────────────────────────────────────── */
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-3);
+  overflow: hidden;
+  font-size: 13px;
+}
+.table thead th {
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  padding: var(--s-3) var(--s-4);
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--border);
+  user-select: none;
+  white-space: nowrap;
+}
+.table tbody td {
+  padding: var(--pad-y) var(--s-4);
+  border-bottom: 1px solid var(--border);
+  height: var(--row-h);
+  vertical-align: middle;
+}
+.table tbody tr:last-child td { border-bottom: 0; }
+.table tbody tr {
+  transition: background-color 0.08s ease;
+}
+.table tbody tr:hover { background: var(--bg-3); }
+.table tbody tr.disabled td { opacity: 0.4; }
+.table tbody tr.disabled td:first-child { opacity: 1; } /* keep toggle clear */
+.table .col-toggle { width: 36px; }
+.table .col-trigger { width: 220px; }
+.table .col-action { width: 140px; }
+.table .col-actions { width: 88px; text-align: right; }
+.table .row-actions {
+  display: flex;
+  gap: 2px;
+  justify-content: flex-end;
+  opacity: 0;
+}
+.table tbody tr:hover .row-actions { opacity: 1; }
+.table .desc { color: var(--text-1); }
+.table .desc.empty { color: var(--text-3); font-style: italic; }
+
+/* Drag handle */
+.drag-handle {
+  width: 14px;
+  color: var(--text-3);
+  cursor: grab;
+  display: inline-flex;
+  align-items: center;
+  margin-right: 4px;
+}
+
+/* ── Keycap ──────────────────────────────────────────────────────── */
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-0);
+  background: linear-gradient(180deg, #25252f, #1c1c24);
+  border: 1px solid #2d2d39;
+  border-bottom-color: #14141a;
+  border-radius: var(--r-1);
+  padding: 2px 6px;
+  min-width: 18px;
+  height: 20px;
+  justify-content: center;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.04) inset,
+    0 1px 0 rgba(0,0,0,0.5);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+.kbd.mod {
+  color: var(--text-1);
+}
+.kbd-combo {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.kbd-combo .plus {
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+/* Keycap style: inline */
+[data-kbd="inline"] .kbd {
+  background: var(--bg-3);
+  border-color: var(--border);
+  border-bottom-color: var(--border);
+  box-shadow: none;
+}
+/* Keycap style: chip (linear/raycast) */
+[data-kbd="chip"] .kbd {
+  background: var(--bg-3);
+  border-color: var(--border-strong);
+  border-bottom-color: var(--border-strong);
+  box-shadow: none;
+  padding: 1px 7px;
+}
+
+/* ── Action-type tag ─────────────────────────────────────────────── */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 1px 8px;
+  border-radius: var(--r-1);
+  background: var(--bg-4);
+  color: var(--text-1);
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+}
+.tag::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 1px;
+  background: currentColor;
+  flex-shrink: 0;
+}
+.tag.send { color: var(--tag-send); }
+.tag.run { color: var(--tag-run); }
+.tag.top { color: var(--tag-top); }
+.tag.custom { color: var(--tag-custom); }
+
+/* ── Toggle ──────────────────────────────────────────────────────── */
+.tgl {
+  width: 28px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--bg-5);
+  border: 1px solid var(--border-strong);
+  position: relative;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.tgl::after {
+  content: "";
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--text-1);
+  transition: transform 0.18s cubic-bezier(.4,0,.2,1), background-color 0.15s ease;
+}
+.tgl.on {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.tgl.on::after {
+  background: #fff;
+  transform: translateX(12px);
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: var(--r-2);
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  color: var(--text-0);
+  background: var(--bg-3);
+  border: 1px solid var(--border-strong);
+  white-space: nowrap;
+  transition: background-color 0.1s ease, border-color 0.1s ease, transform 0.05s ease;
+  user-select: none;
+}
+.btn:hover { background: var(--bg-4); border-color: #3a3a47; }
+.btn:active { transform: translateY(0.5px); }
+.btn:disabled { opacity: 0.4; pointer-events: none; }
+.btn .icon { width: 14px; height: 14px; }
+
+.btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  box-shadow: 0 0 0 1px var(--accent-ring), 0 1px 0 rgba(255,255,255,0.12) inset;
+}
+.btn.primary:hover { background: var(--accent-hi); border-color: var(--accent-hi); }
+
+.btn.success {
+  background: var(--success);
+  border-color: var(--success);
+  color: #03200f;
+  font-weight: 600;
+  box-shadow: 0 0 0 1px var(--success-ring), 0 1px 0 rgba(255,255,255,0.2) inset;
+}
+.btn.success:hover { filter: brightness(1.06); }
+
+.btn.danger:hover { color: var(--danger); border-color: var(--danger-soft); background: var(--danger-soft); }
+
+.btn.ghost { background: transparent; border-color: transparent; color: var(--text-1); }
+.btn.ghost:hover { background: var(--bg-3); color: var(--text-0); border-color: transparent; }
+
+.btn.sm { height: 26px; padding: 0 9px; font-size: 12px; }
+.btn.icon-only { width: 30px; padding: 0; }
+.btn.sm.icon-only { width: 26px; }
+
+/* ── Segmented ───────────────────────────────────────────────────── */
+.seg {
+  display: inline-flex;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-2);
+  padding: 2px;
+  gap: 2px;
+}
+.seg-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: 4px;
+  color: var(--text-1);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 500;
+}
+.seg-btn:hover { color: var(--text-0); }
+.seg-btn.on {
+  background: var(--bg-4);
+  color: var(--text-0);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset;
+}
+
+/* ── Inputs ──────────────────────────────────────────────────────── */
+.input,
+.textarea,
+.select {
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  background: var(--bg-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-2);
+  font-size: 13px;
+  color: var(--text-0);
+  font-family: var(--font-sans);
+  transition: border-color 0.1s ease, box-shadow 0.1s ease;
+}
+.input::placeholder, .textarea::placeholder { color: var(--text-3); }
+.input:hover, .select:hover, .textarea:hover { border-color: #3a3a47; }
+.input:focus, .select:focus, .textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+.input.mono { font-family: var(--font-mono); font-size: 12.5px; }
+.textarea {
+  height: auto;
+  min-height: 80px;
+  padding: 8px 10px;
+  resize: vertical;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+.select {
+  appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='none' stroke='%236b6b78' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' d='M1 1l4 4 4-4'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.input-group label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.input-group .hint {
+  font-size: 11px;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+}
+
+/* Trigger recorder (special input) */
+.recorder {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 4px 8px;
+  background: var(--bg-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-2);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  cursor: default;
+}
+.recorder:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+.recorder.listening {
+  border-color: var(--success);
+  box-shadow: 0 0 0 3px var(--success-ring);
+  background: var(--success-soft);
+}
+.recorder .placeholder { color: var(--text-3); padding: 0 4px; }
+.recorder .listening-text {
+  color: var(--success);
+  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  padding: 0 4px;
+  animation: blink 1.2s ease-in-out infinite;
+}
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ── Bottom action bar ───────────────────────────────────────────── */
+.actionbar {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: 0 var(--s-6);
+  background: var(--bg-2);
+  border-top: 1px solid var(--border);
+}
+.actionbar .spacer { flex: 1; }
+.actionbar .stat {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-2);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.actionbar .stat b { color: var(--text-0); font-weight: 600; }
+.actionbar .divider {
+  width: 1px;
+  height: 16px;
+  background: var(--border);
+  margin: 0 4px;
+}
+
+/* ── Modal ───────────────────────────────────────────────────────── */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 4, 8, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  animation: fade-in 0.12s ease-out;
+}
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+.modal {
+  width: 560px;
+  max-height: 88vh;
+  background: var(--bg-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-4);
+  box-shadow: var(--shadow-modal);
+  display: flex;
+  flex-direction: column;
+  animation: modal-in 0.18s cubic-bezier(.2,.7,.3,1);
+  overflow: hidden;
+}
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--s-4) var(--s-5);
+  border-bottom: 1px solid var(--border);
+}
+.modal-title {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  font-size: 14px;
+  font-weight: 600;
+}
+.modal-title .kicker {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 2px 6px;
+  background: var(--bg-4);
+  border-radius: 3px;
+}
+.modal-body {
+  padding: var(--s-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  overflow-y: auto;
+}
+.modal-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: var(--s-4) var(--s-5);
+  border-top: 1px solid var(--border);
+  background: var(--bg-1);
+}
+.modal-foot .left {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-2);
+}
+
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--s-3);
+}
+.action-card {
+  text-align: left;
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-2);
+  background: var(--bg-1);
+  border: 1px solid var(--border-strong);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  transition: border-color 0.1s ease, background-color 0.1s ease;
+}
+.action-card:hover { border-color: #3a3a47; background: var(--bg-3); }
+.action-card.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.action-card .ac-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-0);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.action-card .ac-desc {
+  font-size: 11px;
+  color: var(--text-2);
+}
+
+.row-two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-4);
+}
+
+/* ── Code preview ────────────────────────────────────────────────── */
+.preview {
+  background: var(--bg-2);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.preview-head {
+  padding: var(--s-4) var(--s-5);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.preview-head-title {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-1);
+}
+.preview-head-title .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--text-3);
+}
+.preview-head-title.live .dot {
+  background: var(--success);
+  box-shadow: 0 0 0 3px var(--success-soft);
+}
+.preview-body {
+  flex: 1;
+  overflow: auto;
+  padding: var(--s-4) var(--s-5);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-1);
+  counter-reset: line;
+}
+.preview-body .line {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: var(--s-3);
+  align-items: baseline;
+}
+.preview-body .line::before {
+  counter-increment: line;
+  content: counter(line);
+  font-size: 10px;
+  color: var(--text-3);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
+.preview-body .ln-comment { color: var(--text-3); font-style: italic; }
+.preview-body .ln-hotkey { color: var(--tag-send); }
+.preview-body .ln-cmd { color: var(--text-0); }
+.preview-body .ln-kw { color: var(--tag-top); }
+.preview-body .ln-string { color: var(--tag-custom); }
+.preview-body .ln-return { color: var(--accent-hi); }
+
+/* ── Empty state ─────────────────────────────────────────────────── */
+.empty {
+  padding: 80px 40px;
+  text-align: center;
+  color: var(--text-2);
+}
+.empty-mark {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto var(--s-4);
+  border-radius: var(--r-3);
+  background: var(--bg-3);
+  border: 1px dashed var(--border-strong);
+  display: grid;
+  place-items: center;
+  color: var(--text-2);
+}
+.empty-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-0);
+  margin-bottom: 4px;
+}
+.empty-desc {
+  font-size: 12.5px;
+  color: var(--text-2);
+  margin-bottom: var(--s-5);
+  max-width: 320px;
+  margin-left: auto;
+  margin-right: auto;
+  text-wrap: pretty;
+}
+
+/* ── Toasts ──────────────────────────────────────────────────────── */
+.toasts {
+  position: fixed;
+  bottom: 72px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  z-index: 200;
+  pointer-events: none;
+}
+.toast {
+  pointer-events: auto;
+  background: var(--bg-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-3);
+  padding: var(--s-3) var(--s-4);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  box-shadow: var(--shadow-3);
+  min-width: 280px;
+  max-width: 380px;
+  animation: toast-in 0.22s cubic-bezier(.2,.7,.3,1);
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.toast.success { border-left: 3px solid var(--success); }
+.toast.warn { border-left: 3px solid var(--warning); }
+.toast.error { border-left: 3px solid var(--danger); }
+.toast.info { border-left: 3px solid var(--accent); }
+.toast-body { flex: 1; }
+.toast-title { font-size: 12.5px; font-weight: 600; color: var(--text-0); }
+.toast-desc { font-size: 11.5px; color: var(--text-2); margin-top: 2px; }
+.toast-close {
+  width: 20px; height: 20px;
+  border-radius: 4px;
+  color: var(--text-2);
+  display: grid; place-items: center;
+}
+.toast-close:hover { background: var(--bg-5); color: var(--text-0); }
+
+/* ── Confirm dialog ──────────────────────────────────────────────── */
+.confirm {
+  width: 380px;
+}
+.confirm .modal-body {
+  padding: var(--s-5) var(--s-5) var(--s-4);
+}
+.confirm-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-3);
+  display: grid;
+  place-items: center;
+  background: var(--danger-soft);
+  color: var(--danger);
+  margin-bottom: var(--s-3);
+}
+
+/* Misc */
+.muted { color: var(--text-2); }
+.mono { font-family: var(--font-mono); }
+.flex { display: flex; align-items: center; gap: var(--s-3); }
+.gap-2 { gap: var(--s-2); }
+.gap-4 { gap: var(--s-4); }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+/* ================================================================
+   AHK Manager v0.1.0 — Standalone Build
+   Combining: tweaks-panel.jsx + ui.jsx + screens.jsx + app.jsx
+   Dark-only developer-tool UI — VS Code / Linear / terminal energy.
+   ================================================================ */
+
+// ── tweaks-panel.jsx ──────────────────────────────────────────────
+
+// tweaks-panel.jsx
+// Reusable Tweaks shell + form-control helpers.
+//
+// Owns the host protocol (listens for __activate_edit_mode / __deactivate_edit_mode,
+// posts __edit_mode_available / __edit_mode_set_keys / __edit_mode_dismissed) so
+// individual prototypes don't re-roll it. Ships a consistent set of controls so you
+// don't hand-draw <input type="range">, segmented radios, steppers, etc.
+//
+// Usage (in an HTML file that loads React + Babel):
+//
+//   const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+//     "primaryColor": "#D97757",
+//     "palette": ["#D97757", "#29261b", "#f6f4ef"],
+//     "fontSize": 16,
+//     "density": "regular",
+//     "dark": false
+//   }/*EDITMODE-END*/;
+//
+//   function App() {
+//     const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+//     return (
+//       <div style={{ fontSize: t.fontSize, color: t.primaryColor }}>
+//         Hello
+//         <TweaksPanel>
+//           <TweakSection label="Typography" />
+//           <TweakSlider label="Font size" value={t.fontSize} min={10} max={32} unit="px"
+//                        onChange={(v) => setTweak('fontSize', v)} />
+//           <TweakRadio  label="Density" value={t.density}
+//                        options={['compact', 'regular', 'comfy']}
+//                        onChange={(v) => setTweak('density', v)} />
+//           <TweakSection label="Theme" />
+//           <TweakColor  label="Primary" value={t.primaryColor}
+//                        options={['#D97757', '#2A6FDB', '#1F8A5B', '#7A5AE0']}
+//                        onChange={(v) => setTweak('primaryColor', v)} />
+//           <TweakColor  label="Palette" value={t.palette}
+//                        options={[['#D97757', '#29261b', '#f6f4ef'],
+//                                  ['#475569', '#0f172a', '#f1f5f9']]}
+//                        onChange={(v) => setTweak('palette', v)} />
+//           <TweakToggle label="Dark mode" value={t.dark}
+//                        onChange={(v) => setTweak('dark', v)} />
+//         </TweaksPanel>
+//       </div>
+//     );
+//   }
+//
+// ─────────────────────────────────────────────────────────────────────────────
+
+const __TWEAKS_STYLE = `
+  .twk-panel{position:fixed;right:16px;bottom:16px;z-index:2147483646;width:280px;
+    max-height:calc(100vh - 32px);display:flex;flex-direction:column;
+    transform:scale(var(--dc-inv-zoom,1));transform-origin:bottom right;
+    background:rgba(250,249,247,.78);color:#29261b;
+    -webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);
+    border:.5px solid rgba(255,255,255,.6);border-radius:14px;
+    box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 12px 40px rgba(0,0,0,.18);
+    font:11.5px/1.4 ui-sans-serif,system-ui,-apple-system,sans-serif;overflow:hidden}
+  .twk-hd{display:flex;align-items:center;justify-content:space-between;
+    padding:10px 8px 10px 14px;cursor:move;user-select:none}
+  .twk-hd b{font-size:12px;font-weight:600;letter-spacing:.01em}
+  .twk-x{appearance:none;border:0;background:transparent;color:rgba(41,38,27,.55);
+    width:22px;height:22px;border-radius:6px;cursor:default;font-size:13px;line-height:1}
+  .twk-x:hover{background:rgba(0,0,0,.06);color:#29261b}
+  .twk-body{padding:2px 14px 14px;display:flex;flex-direction:column;gap:10px;
+    overflow-y:auto;overflow-x:hidden;min-height:0;
+    scrollbar-width:thin;scrollbar-color:rgba(0,0,0,.15) transparent}
+  .twk-body::-webkit-scrollbar{width:8px}
+  .twk-body::-webkit-scrollbar-track{background:transparent;margin:2px}
+  .twk-body::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:4px;
+    border:2px solid transparent;background-clip:content-box}
+  .twk-body::-webkit-scrollbar-thumb:hover{background:rgba(0,0,0,.25);
+    border:2px solid transparent;background-clip:content-box}
+  .twk-row{display:flex;flex-direction:column;gap:5px}
+  .twk-row-h{flex-direction:row;align-items:center;justify-content:space-between;gap:10px}
+  .twk-lbl{display:flex;justify-content:space-between;align-items:baseline;
+    color:rgba(41,38,27,.72)}
+  .twk-lbl>span:first-child{font-weight:500}
+  .twk-val{color:rgba(41,38,27,.5);font-variant-numeric:tabular-nums}
+
+  .twk-sect{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+    color:rgba(41,38,27,.45);padding:10px 0 0}
+  .twk-sect:first-child{padding-top:0}
+
+  .twk-field{appearance:none;box-sizing:border-box;width:100%;min-width:0;height:26px;padding:0 8px;
+    border:.5px solid rgba(0,0,0,.1);border-radius:7px;
+    background:rgba(255,255,255,.6);color:inherit;font:inherit;outline:none}
+  .twk-field:focus{border-color:rgba(0,0,0,.25);background:rgba(255,255,255,.85)}
+  select.twk-field{padding-right:22px;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='rgba(0,0,0,.5)' d='M0 0h10L5 6z'/></svg>");
+    background-repeat:no-repeat;background-position:right 8px center}
+
+  .twk-slider{appearance:none;-webkit-appearance:none;width:100%;height:4px;margin:6px 0;
+    border-radius:999px;background:rgba(0,0,0,.12);outline:none}
+  .twk-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
+    width:14px;height:14px;border-radius:50%;background:#fff;
+    border:.5px solid rgba(0,0,0,.12);box-shadow:0 1px 3px rgba(0,0,0,.2);cursor:default}
+  .twk-slider::-moz-range-thumb{width:14px;height:14px;border-radius:50%;
+    background:#fff;border:.5px solid rgba(0,0,0,.12);box-shadow:0 1px 3px rgba(0,0,0,.2);cursor:default}
+
+  .twk-seg{position:relative;display:flex;padding:2px;border-radius:8px;
+    background:rgba(0,0,0,.06);user-select:none}
+  .twk-seg-thumb{position:absolute;top:2px;bottom:2px;border-radius:6px;
+    background:rgba(255,255,255,.9);box-shadow:0 1px 2px rgba(0,0,0,.12);
+    transition:left .15s cubic-bezier(.3,.7,.4,1),width .15s}
+  .twk-seg.dragging .twk-seg-thumb{transition:none}
+  .twk-seg button{appearance:none;position:relative;z-index:1;flex:1;border:0;
+    background:transparent;color:inherit;font:inherit;font-weight:500;min-height:22px;
+    border-radius:6px;cursor:default;padding:4px 6px;line-height:1.2;
+    overflow-wrap:anywhere}
+
+  .twk-toggle{position:relative;width:32px;height:18px;border:0;border-radius:999px;
+    background:rgba(0,0,0,.15);transition:background .15s;cursor:default;padding:0}
+  .twk-toggle[data-on="1"]{background:#34c759}
+  .twk-toggle i{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;
+    background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .15s}
+  .twk-toggle[data-on="1"] i{transform:translateX(14px)}
+
+  .twk-num{display:flex;align-items:center;box-sizing:border-box;min-width:0;height:26px;padding:0 0 0 8px;
+    border:.5px solid rgba(0,0,0,.1);border-radius:7px;background:rgba(255,255,255,.6)}
+  .twk-num-lbl{font-weight:500;color:rgba(41,38,27,.6);cursor:ew-resize;
+    user-select:none;padding-right:8px}
+  .twk-num input{flex:1;min-width:0;height:100%;border:0;background:transparent;
+    font:inherit;font-variant-numeric:tabular-nums;text-align:right;padding:0 8px 0 0;
+    outline:none;color:inherit;-moz-appearance:textfield}
+  .twk-num input::-webkit-inner-spin-button,.twk-num input::-webkit-outer-spin-button{
+    -webkit-appearance:none;margin:0}
+  .twk-num-unit{padding-right:8px;color:rgba(41,38,27,.45)}
+
+  .twk-btn{appearance:none;height:26px;padding:0 12px;border:0;border-radius:7px;
+    background:rgba(0,0,0,.78);color:#fff;font:inherit;font-weight:500;cursor:default}
+  .twk-btn:hover{background:rgba(0,0,0,.88)}
+  .twk-btn.secondary{background:rgba(0,0,0,.06);color:inherit}
+  .twk-btn.secondary:hover{background:rgba(0,0,0,.1)}
+
+  .twk-swatch{appearance:none;-webkit-appearance:none;width:56px;height:22px;
+    border:.5px solid rgba(0,0,0,.1);border-radius:6px;padding:0;cursor:default;
+    background:transparent;flex-shrink:0}
+  .twk-swatch::-webkit-color-swatch-wrapper{padding:0}
+  .twk-swatch::-webkit-color-swatch{border:0;border-radius:5.5px}
+  .twk-swatch::-moz-color-swatch{border:0;border-radius:5.5px}
+
+  .twk-chips{display:flex;gap:6px}
+  .twk-chip{position:relative;appearance:none;flex:1;min-width:0;height:46px;
+    padding:0;border:0;border-radius:6px;overflow:hidden;cursor:default;
+    box-shadow:0 0 0 .5px rgba(0,0,0,.12),0 1px 2px rgba(0,0,0,.06);
+    transition:transform .12s cubic-bezier(.3,.7,.4,1),box-shadow .12s}
+  .twk-chip:hover{transform:translateY(-1px);
+    box-shadow:0 0 0 .5px rgba(0,0,0,.18),0 4px 10px rgba(0,0,0,.12)}
+  .twk-chip[data-on="1"]{box-shadow:0 0 0 1.5px rgba(0,0,0,.85),
+    0 2px 6px rgba(0,0,0,.15)}
+  .twk-chip>span{position:absolute;top:0;bottom:0;right:0;width:34%;
+    display:flex;flex-direction:column;box-shadow:-1px 0 0 rgba(0,0,0,.1)}
+  .twk-chip>span>i{flex:1;box-shadow:0 -1px 0 rgba(0,0,0,.1)}
+  .twk-chip>span>i:first-child{box-shadow:none}
+  .twk-chip svg{position:absolute;top:6px;left:6px;width:13px;height:13px;
+    filter:drop-shadow(0 1px 1px rgba(0,0,0,.3))}
+`;
+
+// ── useTweaks ───────────────────────────────────────────────────────────────
+// Single source of truth for tweak values. setTweak persists via the host
+// (__edit_mode_set_keys → host rewrites the EDITMODE block on disk).
+function useTweaks(defaults) {
+  const [values, setValues] = React.useState(defaults);
+  // Accepts either setTweak('key', value) or setTweak({ key: value, ... }) so a
+  // useState-style call doesn't write a "[object Object]" key into the persisted
+  // JSON block.
+  const setTweak = React.useCallback((keyOrEdits, val) => {
+    const edits = typeof keyOrEdits === 'object' && keyOrEdits !== null
+      ? keyOrEdits : { [keyOrEdits]: val };
+    setValues((prev) => ({ ...prev, ...edits }));
+    window.parent.postMessage({ type: '__edit_mode_set_keys', edits }, '*');
+    // Same-window signal so in-page listeners (deck-stage rail thumbnails)
+    // can react — the parent message only reaches the host, not peers.
+    window.dispatchEvent(new CustomEvent('tweakchange', { detail: edits }));
+  }, []);
+  return [values, setTweak];
+}
+
+// ── TweaksPanel ─────────────────────────────────────────────────────────────
+// Floating shell. Registers the protocol listener BEFORE announcing
+// availability — if the announce ran first, the host's activate could land
+// before our handler exists and the toolbar toggle would silently no-op.
+// The close button posts __edit_mode_dismissed so the host's toolbar toggle
+// flips off in lockstep; the host echoes __deactivate_edit_mode back which
+// is what actually hides the panel.
+function TweaksPanel({ title = 'Tweaks', children }) {
+  const [open, setOpen] = React.useState(false);
+  const dragRef = React.useRef(null);
+  const offsetRef = React.useRef({ x: 16, y: 16 });
+  const PAD = 16;
+
+  const clampToViewport = React.useCallback(() => {
+    const panel = dragRef.current;
+    if (!panel) return;
+    const w = panel.offsetWidth, h = panel.offsetHeight;
+    const maxRight = Math.max(PAD, window.innerWidth - w - PAD);
+    const maxBottom = Math.max(PAD, window.innerHeight - h - PAD);
+    offsetRef.current = {
+      x: Math.min(maxRight, Math.max(PAD, offsetRef.current.x)),
+      y: Math.min(maxBottom, Math.max(PAD, offsetRef.current.y)),
+    };
+    panel.style.right = offsetRef.current.x + 'px';
+    panel.style.bottom = offsetRef.current.y + 'px';
+  }, []);
+
+  React.useEffect(() => {
+    if (!open) return;
+    clampToViewport();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', clampToViewport);
+      return () => window.removeEventListener('resize', clampToViewport);
+    }
+    const ro = new ResizeObserver(clampToViewport);
+    ro.observe(document.documentElement);
+    return () => ro.disconnect();
+  }, [open, clampToViewport]);
+
+  React.useEffect(() => {
+    const onMsg = (e) => {
+      const t = e?.data?.type;
+      if (t === '__activate_edit_mode') setOpen(true);
+      else if (t === '__deactivate_edit_mode') setOpen(false);
+    };
+    window.addEventListener('message', onMsg);
+    window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+
+  const dismiss = () => {
+    setOpen(false);
+    window.parent.postMessage({ type: '__edit_mode_dismissed' }, '*');
+  };
+
+  const onDragStart = (e) => {
+    const panel = dragRef.current;
+    if (!panel) return;
+    const r = panel.getBoundingClientRect();
+    const sx = e.clientX, sy = e.clientY;
+    const startRight = window.innerWidth - r.right;
+    const startBottom = window.innerHeight - r.bottom;
+    const move = (ev) => {
+      offsetRef.current = {
+        x: startRight - (ev.clientX - sx),
+        y: startBottom - (ev.clientY - sy),
+      };
+      clampToViewport();
+    };
+    const up = () => {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  };
+
+  if (!open) return null;
+  return (
+    <>
+      <style>{__TWEAKS_STYLE}</style>
+      <div ref={dragRef} className="twk-panel" data-omelette-chrome=""
+           style={{ right: offsetRef.current.x, bottom: offsetRef.current.y }}>
+        <div className="twk-hd" onMouseDown={onDragStart}>
+          <b>{title}</b>
+          <button className="twk-x" aria-label="Close tweaks"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={dismiss}>✕</button>
+        </div>
+        <div className="twk-body">
+          {children}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ── Layout helpers ──────────────────────────────────────────────────────────
+
+function TweakSection({ label, children }) {
+  return (
+    <>
+      <div className="twk-sect">{label}</div>
+      {children}
+    </>
+  );
+}
+
+function TweakRow({ label, value, children, inline = false }) {
+  return (
+    <div className={inline ? 'twk-row twk-row-h' : 'twk-row'}>
+      <div className="twk-lbl">
+        <span>{label}</span>
+        {value != null && <span className="twk-val">{value}</span>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// ── Controls ────────────────────────────────────────────────────────────────
+
+function TweakSlider({ label, value, min = 0, max = 100, step = 1, unit = '', onChange }) {
+  return (
+    <TweakRow label={label} value={`${value}${unit}`}>
+      <input type="range" className="twk-slider" min={min} max={max} step={step}
+             value={value} onChange={(e) => onChange(Number(e.target.value))} />
+    </TweakRow>
+  );
+}
+
+function TweakToggle({ label, value, onChange }) {
+  return (
+    <div className="twk-row twk-row-h">
+      <div className="twk-lbl"><span>{label}</span></div>
+      <button type="button" className="twk-toggle" data-on={value ? '1' : '0'}
+              role="switch" aria-checked={!!value}
+              onClick={() => onChange(!value)}><i /></button>
+    </div>
+  );
+}
+
+function TweakRadio({ label, value, options, onChange }) {
+  const trackRef = React.useRef(null);
+  const [dragging, setDragging] = React.useState(false);
+  // The active value is read by pointer-move handlers attached for the lifetime
+  // of a drag — ref it so a stale closure doesn't fire onChange for every move.
+  const valueRef = React.useRef(value);
+  valueRef.current = value;
+
+  // Segments wrap mid-word once per-segment width runs out. The track is
+  // ~248px (280 panel − 28 body pad − 4 seg pad), each button loses 12px
+  // to its own padding, and 11.5px system-ui averages ~6.3px/char — so 2
+  // options fit ~16 chars each, 3 fit ~10. Past that (or >3 options), fall
+  // back to a dropdown rather than wrap.
+  const labelLen = (o) => String(typeof o === 'object' ? o.label : o).length;
+  const maxLen = options.reduce((m, o) => Math.max(m, labelLen(o)), 0);
+  const fitsAsSegments = maxLen <= ({ 2: 16, 3: 10 }[options.length] ?? 0);
+  if (!fitsAsSegments) {
+    // <select> emits strings — map back to the original option value so the
+    // fallback stays type-preserving (numbers, booleans) like the segment path.
+    const resolve = (s) => {
+      const m = options.find((o) => String(typeof o === 'object' ? o.value : o) === s);
+      return m === undefined ? s : typeof m === 'object' ? m.value : m;
+    };
+    return <TweakSelect label={label} value={value} options={options}
+                        onChange={(s) => onChange(resolve(s))} />;
+  }
+  const opts = options.map((o) => (typeof o === 'object' ? o : { value: o, label: o }));
+  const idx = Math.max(0, opts.findIndex((o) => o.value === value));
+  const n = opts.length;
+
+  const segAt = (clientX) => {
+    const r = trackRef.current.getBoundingClientRect();
+    const inner = r.width - 4;
+    const i = Math.floor(((clientX - r.left - 2) / inner) * n);
+    return opts[Math.max(0, Math.min(n - 1, i))].value;
+  };
+
+  const onPointerDown = (e) => {
+    setDragging(true);
+    const v0 = segAt(e.clientX);
+    if (v0 !== valueRef.current) onChange(v0);
+    const move = (ev) => {
+      if (!trackRef.current) return;
+      const v = segAt(ev.clientX);
+      if (v !== valueRef.current) onChange(v);
+    };
+    const up = () => {
+      setDragging(false);
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+
+  return (
+    <TweakRow label={label}>
+      <div ref={trackRef} role="radiogroup" onPointerDown={onPointerDown}
+           className={dragging ? 'twk-seg dragging' : 'twk-seg'}>
+        <div className="twk-seg-thumb"
+             style={{ left: `calc(2px + ${idx} * (100% - 4px) / ${n})`,
+                      width: `calc((100% - 4px) / ${n})` }} />
+        {opts.map((o) => (
+          <button key={o.value} type="button" role="radio" aria-checked={o.value === value}>
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </TweakRow>
+  );
+}
+
+function TweakSelect({ label, value, options, onChange }) {
+  return (
+    <TweakRow label={label}>
+      <select className="twk-field" value={value} onChange={(e) => onChange(e.target.value)}>
+        {options.map((o) => {
+          const v = typeof o === 'object' ? o.value : o;
+          const l = typeof o === 'object' ? o.label : o;
+          return <option key={v} value={v}>{l}</option>;
+        })}
+      </select>
+    </TweakRow>
+  );
+}
+
+function TweakText({ label, value, placeholder, onChange }) {
+  return (
+    <TweakRow label={label}>
+      <input className="twk-field" type="text" value={value} placeholder={placeholder}
+             onChange={(e) => onChange(e.target.value)} />
+    </TweakRow>
+  );
+}
+
+function TweakNumber({ label, value, min, max, step = 1, unit = '', onChange }) {
+  const clamp = (n) => {
+    if (min != null && n < min) return min;
+    if (max != null && n > max) return max;
+    return n;
+  };
+  const startRef = React.useRef({ x: 0, val: 0 });
+  const onScrubStart = (e) => {
+    e.preventDefault();
+    startRef.current = { x: e.clientX, val: value };
+    const decimals = (String(step).split('.')[1] || '').length;
+    const move = (ev) => {
+      const dx = ev.clientX - startRef.current.x;
+      const raw = startRef.current.val + dx * step;
+      const snapped = Math.round(raw / step) * step;
+      onChange(clamp(Number(snapped.toFixed(decimals))));
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+  return (
+    <div className="twk-num">
+      <span className="twk-num-lbl" onPointerDown={onScrubStart}>{label}</span>
+      <input type="number" value={value} min={min} max={max} step={step}
+             onChange={(e) => onChange(clamp(Number(e.target.value)))} />
+      {unit && <span className="twk-num-unit">{unit}</span>}
+    </div>
+  );
+}
+
+// Relative-luminance contrast pick — checkmarks drawn over a swatch need to
+// read on both #111 and #fafafa without per-option configuration. Hex input
+// only (#rgb / #rrggbb); named or rgb()/hsl() colors fall through to "light".
+function __twkIsLight(hex) {
+  const h = String(hex).replace('#', '');
+  const x = h.length === 3 ? h.replace(/./g, (c) => c + c) : h.padEnd(6, '0');
+  const n = parseInt(x.slice(0, 6), 16);
+  if (Number.isNaN(n)) return true;
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  return r * 299 + g * 587 + b * 114 > 148000;
+}
+
+const __TwkCheck = ({ light }) => (
+  <svg viewBox="0 0 14 14" aria-hidden="true">
+    <path d="M3 7.2 5.8 10 11 4.2" fill="none" strokeWidth="2.2"
+          strokeLinecap="round" strokeLinejoin="round"
+          stroke={light ? 'rgba(0,0,0,.78)' : '#fff'} />
+  </svg>
+);
+
+// TweakColor — curated color/palette picker. Each option is either a single
+// hex string or an array of 1-5 hex strings; the card adapts — a lone color
+// renders solid, a palette renders colors[0] as the hero (left ~2/3) with the
+// rest stacked in a sharp column on the right. onChange emits the
+// option in the shape it was passed (string stays string, array stays array).
+// Without options it falls back to the native color input for back-compat.
+function TweakColor({ label, value, options, onChange }) {
+  if (!options || !options.length) {
+    return (
+      <div className="twk-row twk-row-h">
+        <div className="twk-lbl"><span>{label}</span></div>
+        <input type="color" className="twk-swatch" value={value}
+               onChange={(e) => onChange(e.target.value)} />
+      </div>
+    );
+  }
+  // Native <input type=color> emits lowercase hex per the HTML spec, so
+  // compare case-insensitively. String() guards JSON.stringify(undefined),
+  // which returns the primitive undefined (no .toLowerCase).
+  const key = (o) => String(JSON.stringify(o)).toLowerCase();
+  const cur = key(value);
+  return (
+    <TweakRow label={label}>
+      <div className="twk-chips" role="radiogroup">
+        {options.map((o, i) => {
+          const colors = Array.isArray(o) ? o : [o];
+          const [hero, ...rest] = colors;
+          const sup = rest.slice(0, 4);
+          const on = key(o) === cur;
+          return (
+            <button key={i} type="button" className="twk-chip" role="radio"
+                    aria-checked={on} data-on={on ? '1' : '0'}
+                    aria-label={colors.join(', ')} title={colors.join(' · ')}
+                    style={{ background: hero }}
+                    onClick={() => onChange(o)}>
+              {sup.length > 0 && (
+                <span>
+                  {sup.map((c, j) => <i key={j} style={{ background: c }} />)}
+                </span>
+              )}
+              {on && <__TwkCheck light={__twkIsLight(hero)} />}
+            </button>
+          );
+        })}
+      </div>
+    </TweakRow>
+  );
+}
+
+function TweakButton({ label, onClick, secondary = false }) {
+  return (
+    <button type="button" className={secondary ? 'twk-btn secondary' : 'twk-btn'}
+            onClick={onClick}>{label}</button>
+  );
+}
+
+Object.assign(window, {
+  useTweaks, TweaksPanel, TweakSection, TweakRow,
+  TweakSlider, TweakToggle, TweakRadio, TweakSelect,
+  TweakText, TweakNumber, TweakColor, TweakButton,
+});
+
+
+// ── ui.jsx ────────────────────────────────────────────────────────
+// ui.jsx — primitives + icons for AHK Manager
+const { useState, useEffect, useRef, useCallback, useMemo, createContext, useContext } = React;
+
+/* ── Icons (inline SVG, 1.5px stroke) ────────────────────────────── */
+const ico = (d, opts = {}) => (
+  <svg width={opts.size || 14} height={opts.size || 14} viewBox="0 0 16 16" fill="none"
+       stroke="currentColor" strokeWidth={opts.sw || 1.5} strokeLinecap="round" strokeLinejoin="round">
+    {d}
+  </svg>
+);
+const Icon = {
+  Play: () => ico(<polygon points="4 3 13 8 4 13" fill="currentColor" stroke="none" />),
+  Stop: () => ico(<rect x="3.5" y="3.5" width="9" height="9" rx="1" fill="currentColor" stroke="none" />),
+  Plus: () => ico(<><line x1="8" y1="3" x2="8" y2="13"/><line x1="3" y1="8" x2="13" y2="8"/></>),
+  Trash: () => ico(<><path d="M3 4h10"/><path d="M5 4V2.5A1 1 0 0 1 6 2h4a1 1 0 0 1 1 1V4"/><path d="M4 4l1 9a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1l1-9"/></>),
+  Edit: () => ico(<><path d="M11 2l3 3-8 8H3v-3l8-8z"/></>),
+  Copy: () => ico(<><rect x="4" y="4" width="9" height="9" rx="1.5"/><path d="M11 4V3a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h1"/></>),
+  Search: () => ico(<><circle cx="7" cy="7" r="4"/><line x1="10" y1="10" x2="13" y2="13"/></>),
+  Close: () => ico(<><line x1="3.5" y1="3.5" x2="12.5" y2="12.5"/><line x1="12.5" y1="3.5" x2="3.5" y2="12.5"/></>),
+  Check: () => ico(<polyline points="3 8.5 6.5 12 13 4.5"/>),
+  Settings: () => ico(<><circle cx="8" cy="8" r="1.6"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"/></>),
+  Upload: () => ico(<><path d="M8 11V3M5 6l3-3 3 3"/><path d="M2.5 11v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2"/></>),
+  Download: () => ico(<><path d="M8 3v8M5 8l3 3 3-3"/><path d="M2.5 13h11"/></>),
+  Drag: () => ico(<><circle cx="6" cy="4" r="0.6" fill="currentColor"/><circle cx="10" cy="4" r="0.6" fill="currentColor"/><circle cx="6" cy="8" r="0.6" fill="currentColor"/><circle cx="10" cy="8" r="0.6" fill="currentColor"/><circle cx="6" cy="12" r="0.6" fill="currentColor"/><circle cx="10" cy="12" r="0.6" fill="currentColor"/></>),
+  Min: () => ico(<line x1="3" y1="8" x2="13" y2="8"/>, {sw: 1.2}),
+  Max: () => ico(<rect x="3.5" y="3.5" width="9" height="9"/>, {sw: 1.2}),
+  X: () => ico(<><line x1="3.5" y1="3.5" x2="12.5" y2="12.5"/><line x1="12.5" y1="3.5" x2="3.5" y2="12.5"/></>, {sw: 1.2}),
+  Warn: () => ico(<><path d="M8 2L1.5 13h13z"/><line x1="8" y1="6" x2="8" y2="9"/><circle cx="8" cy="11" r="0.6" fill="currentColor" stroke="none"/></>),
+  Lightning: () => ico(<polygon points="9 1 3 9 7 9 6 15 13 7 9 7" fill="currentColor" stroke="none" />),
+  Folder: () => ico(<path d="M2 5a1 1 0 0 1 1-1h3l1 1.5h6a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5z"/>),
+  Cmd: () => ico(<><path d="M5 3a2 2 0 0 0-2 2v0a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v0a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2v0a2 2 0 0 0 2-2v0a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v0a2 2 0 0 0 2 2v0a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2v0z"/></>),
+};
+
+/* ── Button ──────────────────────────────────────────────────────── */
+function Button({ children, variant, size, iconOnly, leftIcon, rightIcon, ...rest }) {
+  const cls = ["btn", variant, size, iconOnly && "icon-only"].filter(Boolean).join(" ");
+  return (
+    <button className={cls} {...rest}>
+      {leftIcon}
+      {children}
+      {rightIcon}
+    </button>
+  );
+}
+
+/* ── Toggle ──────────────────────────────────────────────────────── */
+function Toggle({ on, onChange, ...rest }) {
+  return (
+    <button
+      className={"tgl " + (on ? "on" : "")}
+      onClick={(e) => { e.stopPropagation(); onChange && onChange(!on); }}
+      aria-pressed={on}
+      {...rest}
+    />
+  );
+}
+
+/* ── Keycap ──────────────────────────────────────────────────────── */
+// Parses an AHK-style trigger like "^+4" or "^SPACE" into display tokens.
+function parseTrigger(trigger) {
+  if (!trigger) return [];
+  const tokens = [];
+  let i = 0;
+  while (i < trigger.length) {
+    const c = trigger[i];
+    if (c === "^") { tokens.push({ k: "Ctrl", mod: true }); i++; }
+    else if (c === "+") { tokens.push({ k: "Shift", mod: true }); i++; }
+    else if (c === "!") { tokens.push({ k: "Alt", mod: true }); i++; }
+    else if (c === "#") { tokens.push({ k: "Win", mod: true }); i++; }
+    else {
+      const rest = trigger.slice(i).toUpperCase();
+      // named keys
+      const named = ["SPACE","ENTER","TAB","ESC","ESCAPE","BACKSPACE","DELETE","UP","DOWN","LEFT","RIGHT","HOME","END","PGUP","PGDN"];
+      const match = named.find((n) => rest.startsWith(n));
+      if (match) {
+        const display = match === "SPACE" ? "Space" : match.charAt(0) + match.slice(1).toLowerCase();
+        tokens.push({ k: display, mod: false });
+        i += match.length;
+      } else {
+        tokens.push({ k: trigger.slice(i).toUpperCase(), mod: false });
+        i = trigger.length;
+      }
+    }
+  }
+  return tokens;
+}
+
+function Keycap({ trigger }) {
+  const tokens = parseTrigger(trigger);
+  if (tokens.length === 0) return <span className="muted mono" style={{ fontSize: 11 }}>—</span>;
+  return (
+    <span className="kbd-combo">
+      {tokens.map((t, i) => (
+        <React.Fragment key={i}>
+          {i > 0 && <span className="plus">+</span>}
+          <span className={"kbd " + (t.mod ? "mod" : "")}>{t.k}</span>
+        </React.Fragment>
+      ))}
+    </span>
+  );
+}
+
+/* ── Action tag ──────────────────────────────────────────────────── */
+const ACTION_META = {
+  send_text: { label: "Send Text", cls: "send" },
+  run: { label: "Run", cls: "run" },
+  always_on_top: { label: "Always Top", cls: "top" },
+  custom: { label: "Custom AHK", cls: "custom" },
+};
+
+function ActionTag({ type }) {
+  const m = ACTION_META[type] || ACTION_META.send_text;
+  return <span className={"tag " + m.cls}>{m.label}</span>;
+}
+
+/* ── Status pill ─────────────────────────────────────────────────── */
+function StatusPill({ running }) {
+  return (
+    <span className={"status-pill " + (running ? "running" : "")}>
+      <span className="dot" />
+      {running ? "Running" : "Stopped"}
+    </span>
+  );
+}
+
+/* ── Modal shell ─────────────────────────────────────────────────── */
+function Modal({ children, onClose, width, className }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className={"modal " + (className || "")} style={width ? { width } : undefined}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/* ── Trigger recorder ────────────────────────────────────────────── */
+function TriggerRecorder({ value, onChange }) {
+  const [listening, setListening] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!listening) return;
+    const onKey = (e) => {
+      e.preventDefault();
+      const mods = [];
+      if (e.ctrlKey) mods.push("^");
+      if (e.shiftKey) mods.push("+");
+      if (e.altKey) mods.push("!");
+      if (e.metaKey) mods.push("#");
+      const k = e.key;
+      // Ignore pure modifier presses
+      if (["Control","Shift","Alt","Meta"].includes(k)) return;
+      let main = "";
+      if (k === " ") main = "SPACE";
+      else if (k.length === 1) main = k.toUpperCase();
+      else if (k.startsWith("Arrow")) main = k.replace("Arrow", "").toUpperCase();
+      else main = k.toUpperCase();
+      onChange(mods.join("") + main);
+      setListening(false);
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [listening, onChange]);
+
+  return (
+    <div
+      ref={ref}
+      className={"recorder " + (listening ? "listening" : "")}
+      tabIndex={0}
+      onClick={() => setListening(true)}
+      onBlur={() => setListening(false)}
+    >
+      {listening ? (
+        <span className="listening-text">● PRESS KEYS…</span>
+      ) : value ? (
+        <Keycap trigger={value} />
+      ) : (
+        <span className="placeholder">Click to record a key combo</span>
+      )}
+      <div style={{ marginLeft: "auto", display: "flex", gap: 6, alignItems: "center" }}>
+        {value && !listening && (
+          <button
+            className="btn ghost sm icon-only"
+            onClick={(e) => { e.stopPropagation(); onChange(""); }}
+            title="Clear"
+          ><Icon.Close /></button>
+        )}
+        {!listening && (
+          <span className="muted mono" style={{ fontSize: 10, paddingRight: 4 }}>↵ to record</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── Editable inline title ───────────────────────────────────────── */
+function EditableText({ value, onChange, className }) {
+  const [editing, setEditing] = useState(false);
+  const [v, setV] = useState(value);
+  useEffect(() => setV(value), [value]);
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        className={"input " + (className || "")}
+        style={{ width: "auto", minWidth: 200, height: 28, fontSize: 18, fontWeight: 600, padding: "0 6px" }}
+        value={v}
+        onChange={(e) => setV(e.target.value)}
+        onBlur={() => { onChange(v.trim() || value); setEditing(false); }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") { onChange(v.trim() || value); setEditing(false); }
+          else if (e.key === "Escape") { setV(value); setEditing(false); }
+        }}
+      />
+    );
+  }
+  return (
+    <span
+      className={"editable " + (className || "")}
+      style={{ padding: "0 6px", borderRadius: 6 }}
+      onDoubleClick={() => setEditing(true)}
+    >
+      {value}
+    </span>
+  );
+}
+
+/* ── Toast manager ───────────────────────────────────────────────── */
+const ToastCtx = createContext(null);
+function ToastProvider({ children }) {
+  const [toasts, setToasts] = useState([]);
+  const idRef = useRef(0);
+  const push = useCallback((t) => {
+    const id = ++idRef.current;
+    setToasts((cur) => [...cur, { id, ...t }]);
+    setTimeout(() => setToasts((cur) => cur.filter((x) => x.id !== id)), t.duration || 3600);
+  }, []);
+  const dismiss = useCallback((id) => setToasts((cur) => cur.filter((x) => x.id !== id)), []);
+  return (
+    <ToastCtx.Provider value={{ push }}>
+      {children}
+      <div className="toasts">
+        {toasts.map((t) => (
+          <div key={t.id} className={"toast " + (t.kind || "info")}>
+            <div className="toast-body">
+              <div className="toast-title">{t.title}</div>
+              {t.desc && <div className="toast-desc">{t.desc}</div>}
+            </div>
+            <button className="toast-close" onClick={() => dismiss(t.id)}><Icon.Close /></button>
+          </div>
+        ))}
+      </div>
+    </ToastCtx.Provider>
+  );
+}
+const useToast = () => useContext(ToastCtx);
+
+// Export to window so other Babel scripts can use them
+Object.assign(window, {
+  Icon, Button, Toggle, Keycap, parseTrigger, ActionTag, ACTION_META,
+  StatusPill, Modal, TriggerRecorder, EditableText, ToastProvider, useToast,
+});
+
+
+// ── screens.jsx (React hooks already in scope from ui.jsx above) ──
+// app.jsx — AHK Manager main app
+
+/* ── Seed data ───────────────────────────────────────────────────── */
+const SEED_PROFILES = {
+  "work-macros": {
+    id: "work-macros",
+    name: "Work Macros",
+    hotkeys: [
+      { id: "h1", trigger: "^+4", action_type: "send_text",
+        action_value: "claude --dangerously-skip-permissions",
+        append_enter: true, description: "Claude CLI command", enabled: true },
+      { id: "h2", trigger: "^+1", action_type: "send_text",
+        action_value: "user@company.com\tHunter2!",
+        append_enter: false, description: "Login credentials", enabled: true },
+      { id: "h3", trigger: "^SPACE", action_type: "always_on_top",
+        action_value: "", append_enter: false,
+        description: "Toggle always on top", enabled: true },
+      { id: "h4", trigger: "^+T", action_type: "run",
+        action_value: "wt.exe", append_enter: false,
+        description: "Open Windows Terminal", enabled: true },
+      { id: "h5", trigger: "!q", action_type: "send_text",
+        action_value: "Best,\nAlex", append_enter: false,
+        description: "Email signature", enabled: false },
+      { id: "h6", trigger: "^+G", action_type: "custom",
+        action_value: 'Run, https://github.com/notifications\nreturn',
+        append_enter: false, description: "Open GitHub notifications", enabled: true },
+    ],
+  },
+  "personal": {
+    id: "personal",
+    name: "Personal",
+    hotkeys: [
+      { id: "p1", trigger: "^!N", action_type: "run",
+        action_value: "notepad.exe", append_enter: false,
+        description: "Quick notes", enabled: true },
+      { id: "p2", trigger: "#D", action_type: "send_text",
+        action_value: "📅 Today's plan: ", append_enter: false,
+        description: "Daily planner header", enabled: true },
+    ],
+  },
+  "gaming": {
+    id: "gaming",
+    name: "Gaming",
+    hotkeys: [
+      { id: "g1", trigger: "F1", action_type: "send_text",
+        action_value: "gg wp", append_enter: true,
+        description: "Quick GG", enabled: true },
+      { id: "g2", trigger: "F2", action_type: "send_text",
+        action_value: "Nice play!", append_enter: true,
+        description: "Compliment", enabled: true },
+      { id: "g3", trigger: "F3", action_type: "send_text",
+        action_value: "On my way", append_enter: true,
+        description: "On the way", enabled: true },
+    ],
+  },
+};
+
+/* ── AHK Code generator ──────────────────────────────────────────── */
+function generateAhk(profile) {
+  const lines = [];
+  lines.push({ k: "comment", text: `; Generated by AHK Manager — Profile: ${profile.name}` });
+  lines.push({ k: "comment", text: "; Do not edit manually — use AHK Manager instead" });
+  lines.push({ k: "blank" });
+  const active = profile.hotkeys.filter((h) => h.enabled);
+  if (active.length === 0) {
+    lines.push({ k: "comment", text: "; No enabled hotkeys" });
+    return lines;
+  }
+  active.forEach((h, idx) => {
+    if (idx > 0) lines.push({ k: "blank" });
+    lines.push({ k: "hotkey", text: `${h.trigger}::`, comment: h.description });
+    if (h.action_type === "send_text") {
+      const v = h.action_value.replace(/\n/g, "`n").replace(/\t/g, "`t");
+      lines.push({ k: "cmd", text: `    Send, ${v}` });
+      if (h.append_enter) lines.push({ k: "cmd", text: `    Send, {Enter}` });
+    } else if (h.action_type === "run") {
+      lines.push({ k: "cmd", text: `    Run, ${h.action_value}` });
+    } else if (h.action_type === "always_on_top") {
+      lines.push({ k: "cmd", text: `    Winset, Alwaysontop, , A` });
+    } else if (h.action_type === "custom") {
+      h.action_value.split("\n").forEach((l) => {
+        lines.push({ k: "cmd", text: `    ${l}` });
+      });
+    }
+    lines.push({ k: "return", text: "return" });
+  });
+  return lines;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────────── */
+function Sidebar({ profiles, activeId, runningId, onSelect, onCreate, onDelete, onDuplicate, onApply, onStop }) {
+  const ids = Object.keys(profiles);
+  return (
+    <div className="sidebar">
+      <div className="sidebar-head">
+        <span className="sidebar-head-title">Profiles</span>
+        <span className="sidebar-head-count">{ids.length.toString().padStart(2, "0")}</span>
+      </div>
+      <div className="sidebar-list">
+        {ids.map((id) => {
+          const p = profiles[id];
+          const active = id === activeId;
+          const running = id === runningId;
+          return (
+            <div
+              key={id}
+              className={"profile-item " + (active ? "active " : "") + (running ? "running" : "")}
+              onClick={() => onSelect(id)}
+            >
+              <span className="pi-dot" />
+              <span className="pi-name">{p.name}</span>
+              {!running && <span className="pi-count">{p.hotkeys.length}</span>}
+              {running ? (
+                <button
+                  className="pi-action-btn stop-btn"
+                  title="Stop this script (Ctrl+Enter)"
+                  onClick={(e) => { e.stopPropagation(); onStop(); }}
+                >
+                  <Icon.Stop />
+                </button>
+              ) : (
+                <span className="pi-actions">
+                  <button className="pi-action-btn apply-btn" title="Apply this profile (Ctrl+Enter)"
+                          onClick={(e) => { e.stopPropagation(); onSelect(id); onApply(id); }}>
+                    <Icon.Play />
+                  </button>
+                  <button className="pi-action-btn" title="Duplicate"
+                          onClick={(e) => { e.stopPropagation(); onDuplicate(id); }}>
+                    <Icon.Copy />
+                  </button>
+                  <button className="pi-action-btn" title="Delete"
+                          onClick={(e) => { e.stopPropagation(); onDelete(id); }}>
+                    <Icon.Trash />
+                  </button>
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div className="sidebar-foot">
+        <button className="btn ghost" style={{ width: "100%", justifyContent: "flex-start" }}
+                onClick={onCreate}>
+          <Icon.Plus />
+          New Profile
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ── Hotkey Table ────────────────────────────────────────────────── */
+function HotkeyTable({ profile, query, onEdit, onDelete, onToggle, onAdd, onDuplicate }) {
+  const filtered = useMemo(() => {
+    if (!query) return profile.hotkeys;
+    const q = query.toLowerCase();
+    return profile.hotkeys.filter((h) =>
+      h.trigger.toLowerCase().includes(q) ||
+      h.description.toLowerCase().includes(q) ||
+      (h.action_value || "").toLowerCase().includes(q)
+    );
+  }, [profile.hotkeys, query]);
+
+  if (profile.hotkeys.length === 0) {
+    return (
+      <div className="empty">
+        <div className="empty-mark"><Icon.Lightning /></div>
+        <div className="empty-title">No hotkeys yet</div>
+        <div className="empty-desc">
+          Add a hotkey to bind a trigger (like <span className="mono">Ctrl+Shift+4</span>) to an
+          action — send text, run a command, or write raw AHK.
+        </div>
+        <Button variant="primary" leftIcon={<Icon.Plus />} onClick={onAdd}>Add hotkey</Button>
+      </div>
+    );
+  }
+
+  if (filtered.length === 0) {
+    return (
+      <div className="empty">
+        <div className="empty-mark"><Icon.Search /></div>
+        <div className="empty-title">No matches</div>
+        <div className="empty-desc">No hotkeys match "{query}". Try a different search term.</div>
+      </div>
+    );
+  }
+
+  return (
+    <table className="table">
+      <thead>
+        <tr>
+          <th className="col-toggle"></th>
+          <th className="col-trigger">Trigger</th>
+          <th className="col-action">Action</th>
+          <th>Description</th>
+          <th className="col-actions"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {filtered.map((h) => (
+          <tr key={h.id} className={h.enabled ? "" : "disabled"} onDoubleClick={() => onEdit(h)}>
+            <td className="col-toggle">
+              <Toggle on={h.enabled} onChange={() => onToggle(h.id)} />
+            </td>
+            <td className="col-trigger">
+              <span className="drag-handle"><Icon.Drag /></span>
+              <Keycap trigger={h.trigger} />
+            </td>
+            <td className="col-action">
+              <ActionTag type={h.action_type} />
+            </td>
+            <td>
+              <span className={"desc " + (h.description ? "" : "empty")}>
+                {h.description || "No description"}
+              </span>
+              {h.action_type === "send_text" && h.action_value && (
+                <div className="mono" style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2,
+                                                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 360 }}>
+                  → {h.action_value.replace(/\n/g, "↵").slice(0, 64)}
+                </div>
+              )}
+            </td>
+            <td className="col-actions">
+              <div className="row-actions">
+                <button className="btn ghost sm icon-only" title="Duplicate"
+                        onClick={(e) => { e.stopPropagation(); onDuplicate(h.id); }}>
+                  <Icon.Copy />
+                </button>
+                <button className="btn ghost sm icon-only" title="Edit"
+                        onClick={(e) => { e.stopPropagation(); onEdit(h); }}>
+                  <Icon.Edit />
+                </button>
+                <button className="btn ghost sm icon-only danger" title="Delete"
+                        onClick={(e) => { e.stopPropagation(); onDelete(h.id); }}>
+                  <Icon.Trash />
+                </button>
+              </div>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+/* ── Hotkey Modal ────────────────────────────────────────────────── */
+function HotkeyModal({ initial, onSave, onClose }) {
+  const isEdit = !!initial.id;
+  const [hk, setHk] = useState({
+    id: initial.id || ("h" + Math.random().toString(36).slice(2, 8)),
+    trigger: initial.trigger || "",
+    action_type: initial.action_type || "send_text",
+    action_value: initial.action_value || "",
+    append_enter: !!initial.append_enter,
+    description: initial.description || "",
+    enabled: initial.enabled !== false,
+  });
+  const update = (k, v) => setHk((p) => ({ ...p, [k]: v }));
+
+  const ACTIONS = [
+    { key: "send_text", name: "Send Text", desc: "Type a string", tag: "send" },
+    { key: "run", name: "Run Command", desc: "Launch a program", tag: "run" },
+    { key: "always_on_top", name: "Always on Top", desc: "Pin active window", tag: "top" },
+    { key: "custom", name: "Custom AHK", desc: "Raw AHK snippet", tag: "custom" },
+  ];
+
+  const canSave = hk.trigger.trim() &&
+    (hk.action_type === "always_on_top" || hk.action_value.trim());
+
+  return (
+    <Modal onClose={onClose}>
+      <div className="modal-head">
+        <div className="modal-title">
+          <span className="kicker">{isEdit ? "Edit" : "New"} Hotkey</span>
+          <span style={{ color: "var(--text-2)" }}>
+            {hk.trigger ? <Keycap trigger={hk.trigger} /> : "Untitled binding"}
+          </span>
+        </div>
+        <button className="btn ghost sm icon-only" onClick={onClose}><Icon.Close /></button>
+      </div>
+      <div className="modal-body">
+        <div className="input-group">
+          <label>Trigger</label>
+          <TriggerRecorder value={hk.trigger} onChange={(v) => update("trigger", v)} />
+          <span className="hint">
+            Modifiers: <span style={{ color: "var(--text-1)" }}>^</span> Ctrl ·{" "}
+            <span style={{ color: "var(--text-1)" }}>+</span> Shift ·{" "}
+            <span style={{ color: "var(--text-1)" }}>!</span> Alt ·{" "}
+            <span style={{ color: "var(--text-1)" }}>#</span> Win
+          </span>
+        </div>
+
+        <div className="input-group">
+          <label>Action</label>
+          <div className="action-grid">
+            {ACTIONS.map((a) => (
+              <button
+                key={a.key}
+                className={"action-card " + (hk.action_type === a.key ? "selected" : "")}
+                onClick={() => update("action_type", a.key)}
+              >
+                <div className="ac-name">
+                  <span className={"tag " + a.tag} style={{ padding: "1px 6px" }}>{a.name}</span>
+                </div>
+                <div className="ac-desc">{a.desc}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {hk.action_type === "send_text" && (
+          <>
+            <div className="input-group">
+              <label>Text to send</label>
+              <textarea
+                className="textarea"
+                placeholder="Hello, world!"
+                value={hk.action_value}
+                onChange={(e) => update("action_value", e.target.value)}
+              />
+              <span className="hint">Use \n for newline, \t for tab.</span>
+            </div>
+            <div className="flex gap-2" style={{ marginTop: -4 }}>
+              <Toggle on={hk.append_enter} onChange={(v) => update("append_enter", v)} />
+              <span style={{ fontSize: 12.5 }}>Press <Keycap trigger="Enter" /> after sending</span>
+            </div>
+          </>
+        )}
+
+        {hk.action_type === "run" && (
+          <div className="input-group">
+            <label>Command</label>
+            <input
+              className="input mono"
+              placeholder="notepad.exe   or   C:\Tools\thing.bat"
+              value={hk.action_value}
+              onChange={(e) => update("action_value", e.target.value)}
+            />
+            <span className="hint">Path to an executable, batch file, or URL.</span>
+          </div>
+        )}
+
+        {hk.action_type === "always_on_top" && (
+          <div style={{ padding: 12, background: "var(--bg-1)", border: "1px solid var(--border)",
+                        borderRadius: 6, fontSize: 12.5, color: "var(--text-1)", display: "flex", gap: 10, alignItems: "flex-start" }}>
+            <Icon.Lightning />
+            <div>Pressing this trigger will toggle "Always on Top" for the currently focused window. No additional configuration needed.</div>
+          </div>
+        )}
+
+        {hk.action_type === "custom" && (
+          <div className="input-group">
+            <label>AHK code</label>
+            <textarea
+              className="textarea"
+              placeholder={"Run, https://example.com\nreturn"}
+              value={hk.action_value}
+              onChange={(e) => update("action_value", e.target.value)}
+              style={{ minHeight: 120 }}
+            />
+            <span className="hint">Will be inserted into the generated <span style={{ color: "var(--text-1)" }}>.ahk</span> file as-is.</span>
+          </div>
+        )}
+
+        <div className="input-group">
+          <label>Description <span style={{ textTransform: "none", letterSpacing: 0, color: "var(--text-3)" }}>(optional)</span></label>
+          <input
+            className="input"
+            placeholder="A short note about what this hotkey does"
+            value={hk.description}
+            onChange={(e) => update("description", e.target.value)}
+          />
+        </div>
+      </div>
+      <div className="modal-foot">
+        <div className="left">
+          <Toggle on={hk.enabled} onChange={(v) => update("enabled", v)} />
+          <span>{hk.enabled ? "Enabled" : "Disabled"}</span>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="primary" disabled={!canSave} onClick={() => onSave(hk)}>
+            {isEdit ? "Save changes" : "Add hotkey"}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+/* ── Confirm Dialog ──────────────────────────────────────────────── */
+function ConfirmDialog({ title, body, confirmLabel, onConfirm, onClose, danger }) {
+  return (
+    <Modal onClose={onClose} className="confirm">
+      <div className="modal-body">
+        <div className="confirm-icon" style={!danger ? { background: "var(--accent-soft)", color: "var(--accent)" } : undefined}>
+          <Icon.Warn />
+        </div>
+        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{title}</div>
+        <div style={{ fontSize: 12.5, color: "var(--text-2)", textWrap: "pretty" }}>{body}</div>
+      </div>
+      <div className="modal-foot" style={{ justifyContent: "flex-end" }}>
+        <Button variant="ghost" onClick={onClose}>Cancel</Button>
+        <Button
+          variant={danger ? "primary" : "primary"}
+          style={danger ? { background: "var(--danger)", borderColor: "var(--danger)", boxShadow: "none" } : undefined}
+          onClick={onConfirm}
+        >{confirmLabel}</Button>
+      </div>
+    </Modal>
+  );
+}
+
+/* ── Preview pane ────────────────────────────────────────────────── */
+function PreviewPane({ profile, running, onCopy, onClose }) {
+  const lines = useMemo(() => generateAhk(profile), [profile]);
+  return (
+    <div className="preview">
+      <div className="preview-head">
+        <div className={"preview-head-title " + (running ? "live" : "")}>
+          <span className="dot" />
+          <span>%TEMP%\ahk_manager_active.ahk</span>
+          {running && <span style={{ color: "var(--success)" }}>· live</span>}
+        </div>
+        <div className="flex gap-2">
+          <Button variant="ghost" size="sm" leftIcon={<Icon.Copy />} onClick={onCopy}>Copy</Button>
+          <button className="btn ghost sm icon-only" onClick={onClose} title="Hide preview">
+            <Icon.Close />
+          </button>
+        </div>
+      </div>
+      <div className="preview-body">
+        {lines.map((l, i) => {
+          if (l.k === "blank") return <div key={i} className="line"><span></span></div>;
+          if (l.k === "comment") return <div key={i} className="line"><span className="ln-comment">{l.text}</span></div>;
+          if (l.k === "hotkey") return (
+            <div key={i} className="line">
+              <span><span className="ln-hotkey">{l.text}</span>
+                {l.comment && <span className="ln-comment">{"  ; " + l.comment}</span>}
+              </span>
+            </div>
+          );
+          if (l.k === "return") return <div key={i} className="line"><span className="ln-return">{l.text}</span></div>;
+          return <div key={i} className="line"><span className="ln-cmd">{highlightCmd(l.text)}</span></div>;
+        })}
+      </div>
+    </div>
+  );
+}
+
+function highlightCmd(text) {
+  // simple: highlight keyword (Send,/Run,/Winset, etc.) and strings
+  const m = text.match(/^(\s*)(\w+)(,?\s*)(.*)$/);
+  if (!m) return text;
+  return (
+    <>
+      <span>{m[1]}</span>
+      <span className="ln-kw">{m[2]}</span>
+      <span>{m[3]}</span>
+      <span>{m[4]}</span>
+    </>
+  );
+}
+
+Object.assign(window, {
+  SEED_PROFILES, generateAhk, Sidebar, HotkeyTable, HotkeyModal, ConfirmDialog, PreviewPane,
+});
+
+
+// ── app.jsx ───────────────────────────────────────────────────────
+// app.jsx — root app: state, layout, tweaks integration
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "accent": "#7c5cff",
+  "density": "comfortable",
+  "kbdStyle": "raised",
+  "showPreview": true
+}/*EDITMODE-END*/;
+
+const ACCENT_PRESETS = {
+  "#7c5cff": { hi: "#9277ff", lo: "#5e3fe6", ring: "rgba(124,92,255,0.32)", soft: "rgba(124,92,255,0.14)" },
+  "#2ee68a": { hi: "#5af0a4", lo: "#1ec070", ring: "rgba(46,230,138,0.32)", soft: "rgba(46,230,138,0.14)" },
+  "#ff6b35": { hi: "#ff8a5e", lo: "#e85820", ring: "rgba(255,107,53,0.32)", soft: "rgba(255,107,53,0.14)" },
+  "#ededf0": { hi: "#ffffff", lo: "#c4c4cc", ring: "rgba(237,237,240,0.32)", soft: "rgba(237,237,240,0.10)" },
+};
+
+function applyAccent(hex) {
+  const p = ACCENT_PRESETS[hex] || ACCENT_PRESETS["#7c5cff"];
+  const root = document.documentElement;
+  root.style.setProperty("--accent", hex);
+  root.style.setProperty("--accent-hi", p.hi);
+  root.style.setProperty("--accent-lo", p.lo);
+  root.style.setProperty("--accent-ring", p.ring);
+  root.style.setProperty("--accent-soft", p.soft);
+}
+
+function App() {
+  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  const toast = useToast();
+
+  useEffect(() => applyAccent(t.accent), [t.accent]);
+  useEffect(() => {
+    document.documentElement.dataset.density =
+      t.density === "tight" ? "tight" : t.density === "spacious" ? "comfy" : "";
+    document.documentElement.dataset.kbd = t.kbdStyle;
+  }, [t.density, t.kbdStyle]);
+
+  /* ── State ─────────────────────────────────────────────────── */
+  const [profiles, setProfiles] = useState(SEED_PROFILES);
+  const [activeId, setActiveId] = useState("work-macros");
+  const [runningId, setRunningId] = useState("work-macros");
+  const [query, setQuery] = useState("");
+  const [editingHk, setEditingHk] = useState(null); // {} for new, hotkey object for edit
+  const [confirm, setConfirm] = useState(null);
+  const [showPreview, setShowPreview] = useState(t.showPreview);
+  const [showSettings, setShowSettings] = useState(false);
+  const [lastApplied, setLastApplied] = useState(Date.now() - 2 * 60 * 1000);
+
+  useEffect(() => setShowPreview(t.showPreview), [t.showPreview]);
+
+  const active = profiles[activeId];
+  const running = runningId === activeId;
+
+  /* ── Mutations ─────────────────────────────────────────────── */
+  const updateProfile = (id, mut) => {
+    setProfiles((p) => ({ ...p, [id]: { ...p[id], ...mut(p[id]) } }));
+  };
+
+  const onSaveHotkey = (hk) => {
+    updateProfile(activeId, (p) => {
+      const exists = p.hotkeys.some((h) => h.id === hk.id);
+      return {
+        hotkeys: exists
+          ? p.hotkeys.map((h) => (h.id === hk.id ? hk : h))
+          : [...p.hotkeys, hk],
+      };
+    });
+    setEditingHk(null);
+    toast.push({
+      kind: "success",
+      title: editingHk?.trigger ? "Hotkey updated" : "Hotkey added",
+      desc: <>Trigger <span className="mono">{hk.trigger}</span> is now {hk.enabled ? "active" : "saved (disabled)"}.</>,
+    });
+    if (running) {
+      toast.push({ kind: "info", title: "Restart needed", desc: "Apply changes to update the running script." });
+    }
+  };
+
+  const onDeleteHotkey = (hid) => {
+    const h = active.hotkeys.find((x) => x.id === hid);
+    setConfirm({
+      title: "Delete this hotkey?",
+      body: <>The binding <Keycap trigger={h.trigger} /> will be removed from <b>{active.name}</b>. This can't be undone.</>,
+      confirmLabel: "Delete",
+      danger: true,
+      onConfirm: () => {
+        updateProfile(activeId, (p) => ({ hotkeys: p.hotkeys.filter((h) => h.id !== hid) }));
+        setConfirm(null);
+        toast.push({ kind: "warn", title: "Hotkey deleted", desc: `${h.trigger} removed from ${active.name}.` });
+      },
+    });
+  };
+
+  const onToggleHotkey = (hid) => {
+    updateProfile(activeId, (p) => ({
+      hotkeys: p.hotkeys.map((h) => h.id === hid ? { ...h, enabled: !h.enabled } : h),
+    }));
+  };
+
+  const onDuplicateHotkey = (hid) => {
+    updateProfile(activeId, (p) => {
+      const h = p.hotkeys.find((x) => x.id === hid);
+      const copy = { ...h, id: "h" + Math.random().toString(36).slice(2, 8),
+                     description: (h.description || "Hotkey") + " (copy)" };
+      const idx = p.hotkeys.findIndex((x) => x.id === hid);
+      const next = [...p.hotkeys];
+      next.splice(idx + 1, 0, copy);
+      return { hotkeys: next };
+    });
+  };
+
+  const onCreateProfile = () => {
+    const id = "profile-" + Math.random().toString(36).slice(2, 6);
+    const name = `New Profile ${Object.keys(profiles).length + 1}`;
+    setProfiles((p) => ({ ...p, [id]: { id, name, hotkeys: [] } }));
+    setActiveId(id);
+    toast.push({ kind: "success", title: "Profile created", desc: `Switched to ${name}.` });
+  };
+
+  const onDeleteProfile = (id) => {
+    const p = profiles[id];
+    setConfirm({
+      title: `Delete "${p.name}"?`,
+      body: <>This will remove <b>{p.hotkeys.length}</b> hotkey{p.hotkeys.length === 1 ? "" : "s"} permanently.</>,
+      confirmLabel: "Delete profile",
+      danger: true,
+      onConfirm: () => {
+        setProfiles((cur) => {
+          const next = { ...cur };
+          delete next[id];
+          return next;
+        });
+        if (activeId === id) {
+          const remaining = Object.keys(profiles).filter((k) => k !== id);
+          setActiveId(remaining[0] || null);
+        }
+        if (runningId === id) setRunningId(null);
+        setConfirm(null);
+        toast.push({ kind: "warn", title: "Profile deleted", desc: `${p.name} was removed.` });
+      },
+    });
+  };
+
+  const onDuplicateProfile = (id) => {
+    const p = profiles[id];
+    const newId = id + "-copy-" + Math.random().toString(36).slice(2, 4);
+    const newP = { ...p, id: newId, name: p.name + " (copy)",
+                   hotkeys: p.hotkeys.map((h) => ({ ...h, id: "h" + Math.random().toString(36).slice(2, 8) })) };
+    setProfiles((cur) => ({ ...cur, [newId]: newP }));
+    setActiveId(newId);
+    toast.push({ kind: "info", title: "Profile duplicated", desc: `Created ${newP.name}.` });
+  };
+
+  const onRenameProfile = (name) => {
+    updateProfile(activeId, () => ({ name }));
+  };
+
+  /* ── Apply / Stop ──────────────────────────────────────────── */
+  const onApply = (id) => {
+    const targetId = id || activeId;
+    const target = profiles[targetId];
+    if (!target) return;
+    setRunningId(targetId);
+    setLastApplied(Date.now());
+    const n = target.hotkeys.filter((h) => h.enabled).length;
+    toast.push({
+      kind: "success",
+      title: "Script applied",
+      desc: <>Running <b>{target.name}</b> with {n} hotkey{n === 1 ? "" : "s"}.</>,
+    });
+  };
+  const onStop = () => {
+    setRunningId(null);
+    toast.push({ kind: "info", title: "Stopped", desc: `AHK process terminated.` });
+  };
+
+  const onExport = () => {
+    toast.push({ kind: "success", title: "Exported", desc: `Saved ${active.name.toLowerCase().replace(/\s+/g, "-")}.ahk to Downloads.` });
+  };
+  const onImport = () => {
+    toast.push({ kind: "info", title: "Pick an .ahk file", desc: "Choose a file to parse into a new profile." });
+  };
+
+  /* ── Live preview when running profile is edited ───────────── */
+  const profileEditedAfterApply = useMemo(() => false, []); // omitted for clarity
+
+  /* ── Time-ago display ──────────────────────────────────────── */
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const i = setInterval(() => setTick((x) => x + 1), 15000);
+    return () => clearInterval(i);
+  }, []);
+  const ago = useMemo(() => {
+    const s = Math.floor((Date.now() - lastApplied) / 1000);
+    if (s < 60) return s + "s ago";
+    const m = Math.floor(s / 60);
+    if (m < 60) return m + "m ago";
+    return Math.floor(m / 60) + "h ago";
+  }, [lastApplied, tick]);
+
+  /* ── Keyboard shortcuts ────────────────────────────────────── */
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "n" && !editingHk) {
+        e.preventDefault();
+        setEditingHk({});
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        e.preventDefault();
+        running ? onStop() : onApply();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
+  const enabledCount = active ? active.hotkeys.filter((h) => h.enabled).length : 0;
+
+  /* ── Render ────────────────────────────────────────────────── */
+  return (
+    <div className="app">
+      {/* Title bar */}
+      <div className="titlebar">
+        <div className="titlebar-logo">
+          <div className="titlebar-logo-mark">A</div>
+          <span>AHK Manager</span>
+        </div>
+        <span className="titlebar-meta">v0.1.0 · profiles.json</span>
+        <div className="titlebar-trail">
+          <button className="win-ctrl" title="Settings" onClick={() => setShowSettings(true)}>
+            <Icon.Settings />
+          </button>
+          <span style={{ width: 8 }} />
+          <button className="win-ctrl"><Icon.Min /></button>
+          <button className="win-ctrl"><Icon.Max /></button>
+          <button className="win-ctrl close"><Icon.X /></button>
+        </div>
+      </div>
+
+      {/* Main */}
+      <div className="main">
+        <Sidebar
+          profiles={profiles}
+          activeId={activeId}
+          runningId={runningId}
+          onSelect={setActiveId}
+          onCreate={onCreateProfile}
+          onDelete={onDeleteProfile}
+          onDuplicate={onDuplicateProfile}
+          onApply={onApply}
+          onStop={onStop}
+        />
+
+        {active ? (
+          <div className="content">
+            <div className="content-head">
+              <div>
+                <div className="profile-title">
+                  <EditableText value={active.name} onChange={onRenameProfile} />
+                </div>
+                <div className="profile-sub">
+                  <span>{active.hotkeys.length} hotkey{active.hotkeys.length === 1 ? "" : "s"}</span>
+                  <span className="sep">·</span>
+                  <span>{enabledCount} enabled</span>
+                  {running && <>
+                    <span className="sep">·</span>
+                    <span style={{ color: "var(--success)" }}>applied {ago}</span>
+                  </>}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <StatusPill running={running} />
+                <button
+                  className={"btn ghost sm icon-only " + (showPreview ? "" : "")}
+                  title={showPreview ? "Hide .ahk preview" : "Show .ahk preview"}
+                  onClick={() => setShowPreview((v) => !v)}
+                  style={showPreview ? { color: "var(--accent)" } : undefined}
+                >
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 4l-3 4 3 4M11 4l3 4-3 4"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className={"body " + (showPreview ? "with-preview" : "")}>
+              <div className="table-wrap">
+                <div className="toolbar">
+                  <div className="search" style={{ position: "relative" }}>
+                    <span style={{ position: "absolute", left: 10, top: 8, color: "var(--text-3)" }}>
+                      <Icon.Search />
+                    </span>
+                    <input
+                      className="input"
+                      placeholder="Search triggers, descriptions, actions…"
+                      style={{ paddingLeft: 32, height: 30 }}
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                    />
+                  </div>
+                  <span className="spacer" />
+                  <Button variant="primary" size="sm" leftIcon={<Icon.Plus />}
+                          onClick={() => setEditingHk({})}>Add Hotkey</Button>
+                </div>
+
+                <HotkeyTable
+                  profile={active}
+                  query={query}
+                  onEdit={(h) => setEditingHk(h)}
+                  onDelete={onDeleteHotkey}
+                  onToggle={onToggleHotkey}
+                  onDuplicate={onDuplicateHotkey}
+                  onAdd={() => setEditingHk({})}
+                />
+              </div>
+
+              {showPreview && (
+                <PreviewPane
+                  profile={active}
+                  running={running}
+                  onCopy={() => toast.push({ kind: "success", title: "Copied", desc: ".ahk source copied to clipboard." })}
+                  onClose={() => setShowPreview(false)}
+                />
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="content">
+            <div className="empty" style={{ paddingTop: 120 }}>
+              <div className="empty-mark"><Icon.Folder /></div>
+              <div className="empty-title">No profile selected</div>
+              <div className="empty-desc">Create a profile to start binding hotkeys.</div>
+              <Button variant="primary" leftIcon={<Icon.Plus />} onClick={onCreateProfile}>
+                Create profile
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Action bar */}
+      <div className="actionbar">
+        {running ? (
+          <Button variant="" leftIcon={<Icon.Stop />} onClick={onStop}>Stop</Button>
+        ) : (
+          <Button variant="success" leftIcon={<Icon.Play />} onClick={onApply} disabled={!active || enabledCount === 0}>
+            Apply
+          </Button>
+        )}
+        <div className="divider" />
+        <Button variant="ghost" size="sm" leftIcon={<Icon.Upload />} onClick={onExport}>Export .ahk</Button>
+        <Button variant="ghost" size="sm" leftIcon={<Icon.Download />} onClick={onImport}>Import .ahk</Button>
+        <span className="spacer" />
+        <span className="stat">
+          <span style={{ width: 6, height: 6, borderRadius: 3, background: running ? "var(--success)" : "var(--text-3)" }} />
+          {running ? <><b>{enabledCount}</b> hotkeys active</> : "Idle"}
+        </span>
+        <div className="divider" />
+        <span className="stat" title="Keyboard shortcut">
+          <span className="kbd mod">⌃</span><span className="kbd">N</span>
+          <span style={{ color: "var(--text-3)", marginLeft: 4 }}>new</span>
+        </span>
+        <span className="stat" style={{ marginLeft: 6 }} title="Apply / Stop">
+          <span className="kbd mod">⌃</span><span className="kbd">↵</span>
+          <span style={{ color: "var(--text-3)", marginLeft: 4 }}>{running ? "stop" : "apply"}</span>
+        </span>
+      </div>
+
+      {/* Hotkey modal */}
+      {editingHk && (
+        <HotkeyModal
+          initial={editingHk}
+          onSave={onSaveHotkey}
+          onClose={() => setEditingHk(null)}
+        />
+      )}
+
+      {/* Confirm */}
+      {confirm && (
+        <ConfirmDialog
+          title={confirm.title}
+          body={confirm.body}
+          confirmLabel={confirm.confirmLabel}
+          danger={confirm.danger}
+          onConfirm={confirm.onConfirm}
+          onClose={() => setConfirm(null)}
+        />
+      )}
+
+      {/* Settings modal */}
+      {showSettings && <SettingsModal profiles={profiles} onClose={() => setShowSettings(false)} />}
+
+      {/* Tweaks */}
+      <TweaksPanel>
+        <TweakSection label="Theme" />
+        <TweakColor
+          label="Accent"
+          value={t.accent}
+          options={["#7c5cff", "#2ee68a", "#ff6b35", "#ededf0"]}
+          onChange={(v) => setTweak("accent", v)}
+        />
+        <TweakRadio
+          label="Keycaps"
+          value={t.kbdStyle}
+          options={[
+            { value: "raised", label: "Raised" },
+            { value: "chip", label: "Chip" },
+            { value: "inline", label: "Inline" },
+          ]}
+          onChange={(v) => setTweak("kbdStyle", v)}
+        />
+        <TweakSection label="Layout" />
+        <TweakRadio
+          label="Density"
+          value={t.density}
+          options={[
+            { value: "tight", label: "Tight" },
+            { value: "comfortable", label: "Comfy" },
+            { value: "spacious", label: "Spacious" },
+          ]}
+          onChange={(v) => setTweak("density", v)}
+        />
+        <TweakToggle
+          label="Show .ahk preview"
+          value={t.showPreview}
+          onChange={(v) => setTweak("showPreview", v)}
+        />
+      </TweaksPanel>
+    </div>
+  );
+}
+
+/* ── Settings Modal ──────────────────────────────────────────────── */
+function SettingsModal({ profiles, onClose }) {
+  const [path, setPath] = useState("C:\\Program Files\\AutoHotkey\\AutoHotkey.exe");
+  const [launch, setLaunch] = useState("work-macros");
+  const [minimized, setMinimized] = useState(false);
+  return (
+    <Modal onClose={onClose} width={520}>
+      <div className="modal-head">
+        <div className="modal-title">
+          <span className="kicker">Settings</span>
+        </div>
+        <button className="btn ghost sm icon-only" onClick={onClose}><Icon.Close /></button>
+      </div>
+      <div className="modal-body">
+        <div className="input-group">
+          <label>AutoHotkey.exe path</label>
+          <div className="flex gap-2">
+            <input className="input mono" value={path} onChange={(e) => setPath(e.target.value)} />
+            <Button variant="" size="sm">Browse</Button>
+          </div>
+          <span className="hint" style={{ color: "var(--success)" }}>
+            ✓ Detected · v1.1.37.02
+          </span>
+        </div>
+        <div className="input-group">
+          <label>Launch profile on app start</label>
+          <select className="select" value={launch} onChange={(e) => setLaunch(e.target.value)}>
+            <option value="">— None —</option>
+            {Object.values(profiles).map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex" style={{ justifyContent: "space-between" }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 500 }}>Start minimized to tray</div>
+            <div style={{ fontSize: 11.5, color: "var(--text-2)", marginTop: 2 }}>
+              App opens hidden; right-click tray icon to switch profiles.
+            </div>
+          </div>
+          <Toggle on={minimized} onChange={setMinimized} />
+        </div>
+        <div style={{ padding: "10px 12px", background: "var(--bg-1)", border: "1px solid var(--border)",
+                      borderRadius: 6, fontSize: 11.5, color: "var(--text-2)", fontFamily: "var(--font-mono)" }}>
+          <div style={{ color: "var(--text-3)", marginBottom: 4 }}>; Storage</div>
+          <div>~\AppData\Local\AHKManager\profiles.json</div>
+        </div>
+      </div>
+      <div className="modal-foot" style={{ justifyContent: "flex-end" }}>
+        <Button variant="ghost" onClick={onClose}>Cancel</Button>
+        <Button variant="primary" onClick={onClose}>Save settings</Button>
+      </div>
+    </Modal>
+  );
+}
+
+function Root() {
+  return (
+    <ToastProvider>
+      <App />
+    </ToastProvider>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<Root />);
+
+  </script>
+</body>
+</html>

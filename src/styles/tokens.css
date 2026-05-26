@@ -1,0 +1,85 @@
+/* AHK Manager — Design Tokens & Globals
+   Dark-only, developer-tool aesthetic. VS Code / Linear / terminal energy. */
+
+:root {
+  /* ── Surfaces (deepest → raised) ─────────────────────────────── */
+  --bg-0: #08080b;       /* app shell behind everything */
+  --bg-1: #0d0d11;       /* main canvas */
+  --bg-2: #121218;       /* panels, sidebar */
+  --bg-3: #181820;       /* raised cards, table */
+  --bg-4: #1f1f29;       /* hover */
+  --bg-5: #272732;       /* selected, active row */
+
+  /* ── Borders ─────────────────────────────────────────────────── */
+  --border: #20202a;
+  --border-strong: #2d2d39;
+  --border-focus: var(--accent);
+
+  /* ── Text ────────────────────────────────────────────────────── */
+  --text-0: #ededf0;     /* primary */
+  --text-1: #a4a4b0;     /* secondary */
+  --text-2: #6b6b78;     /* tertiary, descriptions */
+  --text-3: #44444f;     /* disabled, separators in text */
+
+  /* ── Accent (themeable via settings) ─────────────────────────── */
+  --accent: #7c5cff;
+  --accent-hi: #9277ff;
+  --accent-lo: #5e3fe6;
+  --accent-soft: rgba(124, 92, 255, 0.14);
+  --accent-ring: rgba(124, 92, 255, 0.32);
+
+  /* ── Semantic ────────────────────────────────────────────────── */
+  --success: #2ee68a;
+  --success-soft: rgba(46, 230, 138, 0.12);
+  --success-ring: rgba(46, 230, 138, 0.28);
+  --warning: #ffb340;
+  --warning-soft: rgba(255, 179, 64, 0.14);
+  --danger: #ff5570;
+  --danger-soft: rgba(255, 85, 112, 0.14);
+
+  /* Action-type pill colors */
+  --tag-send: #6dd3ff;
+  --tag-run: #c197ff;
+  --tag-top: #ffb96b;
+  --tag-custom: #2ee68a;
+
+  /* ── Radii ───────────────────────────────────────────────────── */
+  --r-1: 4px;
+  --r-2: 6px;
+  --r-3: 8px;
+  --r-4: 10px;
+  --r-5: 14px;
+
+  /* ── Spacing scale ───────────────────────────────────────────── */
+  --s-1: 4px;
+  --s-2: 6px;
+  --s-3: 8px;
+  --s-4: 12px;
+  --s-5: 16px;
+  --s-6: 20px;
+  --s-7: 28px;
+
+  /* ── Type ────────────────────────────────────────────────────── */
+  --font-sans: "Geist Variable", "Geist", "Inter", -apple-system, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", "JetBrains Mono", "SF Mono", ui-monospace, monospace;
+
+  /* ── Shadows ─────────────────────────────────────────────────── */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-3: 0 12px 32px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.3);
+  --shadow-modal: 0 24px 80px rgba(0, 0, 0, 0.7), 0 4px 16px rgba(0, 0, 0, 0.4);
+
+  /* Row height — themed by density */
+  --row-h: 36px;
+  --pad-y: 8px;
+}
+
+/* Density variants */
+[data-density="tight"] {
+  --row-h: 32px;
+  --pad-y: 6px;
+}
+[data-density="comfy"] {
+  --row-h: 44px;
+  --pad-y: 12px;
+}
