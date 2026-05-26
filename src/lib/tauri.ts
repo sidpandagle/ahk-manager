@@ -39,9 +39,14 @@ export async function exportAhk(filename: string, source: string): Promise<strin
   return invoke<string>("export_ahk", { filename, source });
 }
 
-/** Open dialog → read file string. */
-export async function importAhk(): Promise<string> {
-  return invoke<string>("import_ahk");
+export interface ImportResult {
+  path: string;
+  content: string;
+}
+
+/** Open file dialog → return the chosen path and raw .ahk file contents. */
+export async function importAhk(): Promise<ImportResult> {
+  return invoke<ImportResult>("import_ahk");
 }
 
 /** File picker for AutoHotkey.exe. Returns chosen path. */

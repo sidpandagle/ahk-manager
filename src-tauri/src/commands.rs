@@ -226,9 +226,16 @@ pub async fn export_ahk(
     Ok(path_str)
 }
 
-/// Show an Open dialog and return the raw .ahk file contents.
+/// Return type for import_ahk so the frontend gets both path and content.
+#[derive(serde::Serialize)]
+pub struct ImportResult {
+    pub path: String,
+    pub content: String,
+}
+
+/// Show an Open dialog and return both the chosen file path and raw .ahk contents.
 #[tauri::command]
-pub async fn import_ahk(app: tauri::AppHandle) -> Result<String, String> {
+pub async fn import_ahk(app: tauri::AppHandle) -> Result<ImportResult, String> {
     use tauri_plugin_dialog::DialogExt;
 
     let path = app
@@ -239,7 +246,8 @@ pub async fn import_ahk(app: tauri::AppHandle) -> Result<String, String> {
         .ok_or_else(|| "Cancelled".to_string())?;
 
     let path_str = path_to_string(&path)?;
-    std::fs::read_to_string(&path_str).map_err(|e| e.to_string())
+    let content = std::fs::read_to_string(&path_str).map_err(|e| e.to_string())?;
+    Ok(ImportResult { path: path_str, content })
 }
 
 /// Show an Open dialog filtered to .exe. Returns the chosen path string.

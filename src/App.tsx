@@ -22,6 +22,7 @@ import { Keycap } from "./components/ui/Keycap";
 import { Icon } from "./components/ui/Icons";
 import { generateAhk, flattenLines } from "./features/preview/ahk-codegen";
 import type { AhkVersion } from "./features/preview/ahk-codegen";
+import { parseAhkFile } from "./lib/ahk-parser";
 import {
   loadProfiles,
   saveProfiles,
@@ -322,13 +323,33 @@ export function App() {
 
   const handleImport = async () => {
     try {
-      await importAhk();
+      const { path, content } = await importAhk();
+
+      const hotkeys = parseAhkFile(content);
+      if (hotkeys.length === 0) {
+        toast.push({
+          kind: "warn",
+          title: "Nothing to import",
+          desc: "No recognizable hotkeys found in the selected file.",
+        });
+        return;
+      }
+
+      // Derive a profile name from the filename (strip path + extension)
+      const filename =
+        path.split(/[/\\]/).pop()?.replace(/\.ahk$/i, "") ?? "Imported";
+
+      const id = createProfile();
+      renameProfile(id, filename);
+      hotkeys.forEach((h) => upsertHotkey(id, h));
+      setActiveId(id);
+
       toast.push({
-        kind: "info",
+        kind: "success",
         title: "Imported",
-        desc: "Import parsing coming soon.",
+        desc: `${hotkeys.length} hotkey${hotkeys.length !== 1 ? "s" : ""} imported as "${filename}".`,
       });
-    } catch { /* cancelled */ }
+    } catch { /* cancelled or file-read error */ }
   };
 
   // ── Settings ────────────────────────────────────────────────────────
