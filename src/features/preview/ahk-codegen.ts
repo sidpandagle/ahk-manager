@@ -85,12 +85,43 @@ function generateV2Body(h: Hotkey, lines: AhkLine[]): void {
       lines.push({ k: "cmd", text: `    WinSetAlwaysOnTop(-1, "A")` });
       break;
     case "custom":
+      // Upgrade any v1-style commands that were imported/stored before this fix.
+      // Lines already in v2 syntax are passed through unchanged.
       h.action_value.split("\n").forEach((l) => {
-        lines.push({ k: "cmd", text: `    ${l}` });
+        lines.push({ k: "cmd", text: `    ${upgradeV1LineToV2(l)}` });
       });
       break;
   }
   lines.push({ k: "cmd", text: "}" });
+}
+
+/**
+ * Best-effort upgrade of a single AHK v1 command line to v2 syntax.
+ * Only touches the most common commands; unknown lines are left as-is.
+ */
+function upgradeV1LineToV2(line: string): string {
+  const t = line.trim();
+
+  // Already v2 — has Send(...) / Run(...) style
+  if (/^Send\s*\(/i.test(t) || /^Run\s*\(/i.test(t)) return line;
+
+  // Send, value  →  Send("value")
+  const sendM = t.match(/^Send,\s+(.+)$/i);
+  if (sendM) return line.replace(t, `Send("${sendM[1]}")`);
+
+  // Run, value  →  Run("value")
+  const runM = t.match(/^Run,\s+(.+)$/i);
+  if (runM) return line.replace(t, `Run("${runM[1]}")`);
+
+  // Winset, Alwaysontop, ...  →  WinSetAlwaysOnTop(-1, "A")
+  if (/^Winset,\s*Alwaysontop/i.test(t)) {
+    return line.replace(t, `WinSetAlwaysOnTop(-1, "A")`);
+  }
+
+  // v1 `return` is not needed inside v2 { } blocks — drop it silently
+  if (/^return$/i.test(t)) return "";
+
+  return line;
 }
 
 // ── Escaping helpers ────────────────────────────────────────────────

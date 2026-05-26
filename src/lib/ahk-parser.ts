@@ -144,17 +144,30 @@ function classifyV1(
     return { action_type: "run", action_value: value, append_enter: false };
   }
 
-  // send_text — one or two Send lines
+  // send_text — any number of Send lines, no other command types.
+  // Multiple sends are merged into a single value so that
+  //   Send, email\nSend, {Tab}\nSend, pass\nSend, {Enter}
+  // becomes  action_value="email{Tab}pass", append_enter=true
+  // which codegen can correctly render for both v1 and v2.
   const sendLines = meaningful.filter((l) => /^Send,/i.test(l));
   const otherLines = meaningful.filter((l) => !/^Send,/i.test(l));
 
   if (sendLines.length > 0 && otherLines.length === 0) {
-    const enterLine = sendLines.find((l) => /^Send,\s*\{Enter\}/i.test(l));
-    const textLines = sendLines.filter((l) => !/^Send,\s*\{Enter\}/i.test(l));
+    // Treat a trailing {Enter} as append_enter rather than part of the value.
+    const lastIsEnter = /^Send,\s*\{Enter\}/i.test(sendLines[sendLines.length - 1]);
+    const contentLines = lastIsEnter ? sendLines.slice(0, -1) : sendLines;
 
-    if (textLines.length === 1) {
-      const value = unescapeV1(textLines[0].replace(/^Send,\s*/i, "").trim());
-      return { action_type: "send_text", action_value: value, append_enter: !!enterLine };
+    if (contentLines.length >= 1) {
+      // Concatenate all content sends — preserves AHK key names like {Tab}, {Space}.
+      const combined = contentLines
+        .map((l) => unescapeV1(l.replace(/^Send,\s*/i, "").trim()))
+        .join("");
+      return { action_type: "send_text", action_value: combined, append_enter: lastIsEnter };
+    }
+
+    // Edge-case: only an {Enter} line present.
+    if (contentLines.length === 0 && lastIsEnter) {
+      return { action_type: "send_text", action_value: "", append_enter: true };
     }
   }
 

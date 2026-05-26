@@ -89,12 +89,18 @@ export function App() {
 
   // ── Apply / Stop ─────────────────────────────────────────────────────
   const handleApply = useCallback(
-    async (id: string, profileMap: Record<string, Profile> = profiles) => {
+    async (
+      id: string,
+      profileMap: Record<string, Profile> = profiles,
+      /** Explicit version override for boot-time auto-launch (before ahkInfo is in state). */
+      versionOverride?: AhkVersion,
+    ) => {
       const target = profileMap[id];
       if (!target) return;
       const n = target.hotkeys.filter((h) => h.enabled).length;
+      const version = versionOverride ?? ahkVersion;
       try {
-        const src = flattenLines(generateAhk(target, ahkVersion));
+        const src = flattenLines(generateAhk(target, version));
         const pid = await applyProfile(src);
         setRunning(id, pid);
         toast.push({
@@ -130,22 +136,35 @@ export function App() {
 
       if (!mounted) return;
 
-      if (dataResult.status === "fulfilled") {
-        const data = dataResult.value;
-        hydrate(data);
-        loadSettings(data.settings);
-        const t = data.settings.theme;
+      // `load_profiles` returns null on first launch (no profiles.json yet).
+      // Treat null as a missing file so we fall through to the empty-state path.
+      const rawData = dataResult.status === "fulfilled" ? dataResult.value : null;
+
+      if (rawData) {
+        hydrate(rawData);
+        loadSettings(rawData.settings);
+        const t = rawData.settings.theme;
         applyAccent(t.accent);
         applyDensity(t.density);
         applyKbdStyle(t.kbd_style);
         setShowPreview(t.show_preview);
 
-        const launchId = data.settings.launch_profile_id;
-        if (launchId && data.profiles[launchId]) {
-          await handleApply(launchId, data.profiles);
+        // Auto-apply the launch profile only if AHK exe path is configured.
+        // Attempting to launch without a valid path produces a cryptic OS error.
+        const launchId = rawData.settings.launch_profile_id;
+        const ahkExe = rawData.settings.ahk_exe_path;
+        if (launchId && rawData.profiles[launchId] && ahkExe) {
+          // Derive AHK version directly from infoResult — setAhkInfo hasn't run yet
+          // so the ahkVersion in the handleApply closure is still the initial v1 default.
+          const bootVersion: AhkVersion =
+            infoResult.status === "fulfilled" &&
+            (infoResult.value?.version_major ?? 1) >= 2
+              ? 2
+              : 1;
+          await handleApply(launchId, rawData.profiles, bootVersion);
         }
       } else {
-        // First launch — create empty state
+        // First launch or corrupt file — start with empty state
         hydrate({
           profiles: {},
           settings: DEFAULT_SETTINGS,
