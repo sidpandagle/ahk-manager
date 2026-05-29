@@ -392,7 +392,17 @@ input, textarea, select {
 .table .col-toggle { width: 36px; }
 .table .col-trigger { width: 220px; }
 .table .col-action { width: 140px; }
+.table .col-command { max-width: 0; }
 .table .col-actions { width: 88px; text-align: right; }
+.table .command-preview {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-1);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
 .table .row-actions {
   display: flex;
   gap: 2px;

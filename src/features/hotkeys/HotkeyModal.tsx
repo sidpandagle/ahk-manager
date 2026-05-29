@@ -5,7 +5,7 @@ import { Toggle } from "../../components/ui/Toggle";
 import { Keycap } from "../../components/ui/Keycap";
 import { TriggerRecorder } from "../../components/ui/TriggerRecorder";
 import { Icon } from "../../components/ui/Icons";
-import type { Hotkey, ActionType } from "../../lib/types";
+import type { Hotkey } from "../../lib/types";
 
 function nanoid(): string {
   return "h" + Math.random().toString(36).slice(2, 8);
@@ -26,19 +26,6 @@ interface HotkeyModalProps {
   onSave: (hk: Hotkey) => void;
   onClose: () => void;
 }
-
-const ACTIONS: { key: ActionType; name: string; desc: string; tag: string }[] =
-  [
-    { key: "send_text", name: "Send Text", desc: "Type a string", tag: "send" },
-    { key: "run", name: "Run Command", desc: "Launch a program", tag: "run" },
-    {
-      key: "always_on_top",
-      name: "Always on Top",
-      desc: "Pin active window",
-      tag: "top",
-    },
-    { key: "custom", name: "Custom AHK", desc: "Raw AHK snippet", tag: "custom" },
-  ];
 
 export function HotkeyModal({ initial, onSave, onClose }: HotkeyModalProps) {
   const isEdit = Boolean(initial.id);
@@ -91,29 +78,6 @@ export function HotkeyModal({ initial, onSave, onClose }: HotkeyModalProps) {
           </span>
         </div>
 
-        {/* Action type grid */}
-        <div className="input-group">
-          <label>Action</label>
-          <div className="action-grid">
-            {ACTIONS.map((a) => (
-              <button
-                key={a.key}
-                className={"action-card " + (hk.action_type === a.key ? "selected" : "")}
-                onClick={() => update("action_type", a.key)}
-                type="button"
-              >
-                <div className="ac-name">
-                  <span className={"tag " + a.tag} style={{ padding: "1px 6px" }}>
-                    {a.name}
-                  </span>
-                </div>
-                <div className="ac-desc">{a.desc}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Action-specific fields */}
         {hk.action_type === "send_text" && (
           <>
             <div className="input-group">
@@ -192,28 +156,9 @@ export function HotkeyModal({ initial, onSave, onClose }: HotkeyModalProps) {
           </div>
         )}
 
-        {/* Description */}
-        <div className="input-group">
-          <label>
-            Description{" "}
-            <span style={{ textTransform: "none", letterSpacing: 0, color: "var(--text-3)" }}>
-              (optional)
-            </span>
-          </label>
-          <input
-            className="input"
-            placeholder="A short note about what this hotkey does"
-            value={hk.description}
-            onChange={(e) => update("description", e.target.value)}
-          />
-        </div>
       </div>
 
       <div className="modal-foot">
-        <div className="left">
-          <Toggle on={hk.enabled} onChange={(v) => update("enabled", v)} />
-          <span>{hk.enabled ? "Enabled" : "Disabled"}</span>
-        </div>
         <div className="flex gap-2">
           <Button variant="ghost" onClick={onClose}>
             Cancel

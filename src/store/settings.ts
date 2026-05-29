@@ -2,7 +2,7 @@ import { create } from "zustand";
 import type { AppSettings } from "../lib/types";
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  ahk_exe_path: "",
+  ahk_exe_path: "C:\\Program Files\\AutoHotkey\\v2\\AutoHotkey64.exe",
   launch_profile_id: null,
   start_minimized: false,
   theme: {
@@ -29,7 +29,14 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   settings: DEFAULT_SETTINGS,
 
   loadSettings(s) {
-    set({ settings: { ...DEFAULT_SETTINGS, ...s, theme: { ...DEFAULT_SETTINGS.theme, ...s.theme } } });
+    set({
+      settings: {
+        ...DEFAULT_SETTINGS,
+        ...s,
+        ahk_exe_path: s.ahk_exe_path || DEFAULT_SETTINGS.ahk_exe_path,
+        theme: { ...DEFAULT_SETTINGS.theme, ...s.theme },
+      },
+    });
   },
 
   updateSettings(partial) {

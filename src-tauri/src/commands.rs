@@ -103,39 +103,20 @@ pub fn detect_ahk(custom_path: Option<String>) -> Result<AhkInfo, String> {
         if !path.exists() {
             continue;
         }
-        // AHK v2 uses --version (double dash); AHK v1 uses /version (single slash).
-        // Passing /version to v2 shows a "Script file not found" dialog, so pick the
-        // right flag based on whether the path looks like a v2 install.
-        let path_str = path.to_string_lossy().to_lowercase();
-        let version_flag = if path_str.contains("v2") || path_str.contains("autohotkey64") {
-            "--version"
-        } else {
-            "/version"
-        };
-        if let Ok(output) = Command::new(path).arg(version_flag).output() {
-            let raw = String::from_utf8_lossy(&output.stdout).trim().to_string();
-            // AHK v2 writes version to stdout; v1 may write nothing or write to stderr
-            let version = if !raw.is_empty() {
-                raw
+        // Infer version from path rather than running the exe — AHK shows a blocking
+        // "Script file not found" dialog for unrecognised flags, which hangs detection.
+        let path_lower = path.to_string_lossy().to_lowercase();
+        let (version, version_major) =
+            if path_lower.contains("v2") || path_lower.contains("autohotkey64") {
+                ("2.0".to_string(), 2u32)
             } else {
-                // Fallback: read from file version info (heuristic from path)
-                if path.to_string_lossy().contains("v2") {
-                    "2.0".to_string()
-                } else {
-                    "1.1".to_string()
-                }
+                ("1.1".to_string(), 1u32)
             };
-            let version_major: u32 = version
-                .split('.')
-                .next()
-                .and_then(|v| v.parse().ok())
-                .unwrap_or(1);
-            return Ok(AhkInfo {
-                path: path.display().to_string(),
-                version,
-                version_major,
-            });
-        }
+        return Ok(AhkInfo {
+            path: path.display().to_string(),
+            version,
+            version_major,
+        });
     }
 
     Err(

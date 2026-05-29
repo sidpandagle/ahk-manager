@@ -1,17 +1,19 @@
 import { useMemo } from "react";
 import { Button } from "../../components/ui/Button";
-import { Toggle } from "../../components/ui/Toggle";
 import { Keycap } from "../../components/ui/Keycap";
-import { ActionTag } from "../../components/ui/ActionTag";
 import { Icon } from "../../components/ui/Icons";
 import type { Profile, Hotkey } from "../../lib/types";
+
+function getCommandPreview(h: Hotkey): string {
+  if (h.action_type === "always_on_top") return "Always on top";
+  return h.action_value || "";
+}
 
 interface HotkeyTableProps {
   profile: Profile;
   query: string;
   onEdit: (h: Hotkey) => void;
   onDelete: (id: string) => void;
-  onToggle: (id: string) => void;
   onAdd: () => void;
   onDuplicate: (id: string) => void;
 }
@@ -21,7 +23,6 @@ export function HotkeyTable({
   query,
   onEdit,
   onDelete,
-  onToggle,
   onAdd,
   onDuplicate,
 }: HotkeyTableProps) {
@@ -73,10 +74,8 @@ export function HotkeyTable({
     <table className="table">
       <thead>
         <tr>
-          <th className="col-toggle" />
           <th className="col-trigger">Trigger</th>
-          <th className="col-action">Action</th>
-          <th>Description</th>
+          <th className="col-command">Command</th>
           <th className="col-actions" />
         </tr>
       </thead>
@@ -84,41 +83,16 @@ export function HotkeyTable({
         {filtered.map((h) => (
           <tr
             key={h.id}
-            className={h.enabled ? "" : "disabled"}
             onDoubleClick={() => onEdit(h)}
           >
-            <td className="col-toggle">
-              <Toggle on={h.enabled} onChange={() => onToggle(h.id)} />
-            </td>
             <td className="col-trigger">
               <span className="drag-handle">
                 <Icon.Drag />
               </span>
               <Keycap trigger={h.trigger} />
             </td>
-            <td className="col-action">
-              <ActionTag type={h.action_type} />
-            </td>
-            <td>
-              <span className={"desc " + (h.description ? "" : "empty")}>
-                {h.description || "No description"}
-              </span>
-              {h.action_type === "send_text" && h.action_value && (
-                <div
-                  className="mono"
-                  style={{
-                    fontSize: 11,
-                    color: "var(--text-3)",
-                    marginTop: 2,
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    maxWidth: 360,
-                  }}
-                >
-                  → {h.action_value.replace(/\n/g, "↵").slice(0, 64)}
-                </div>
-              )}
+            <td className="col-command">
+              <span className="command-preview">{getCommandPreview(h)}</span>
             </td>
             <td className="col-actions">
               <div className="row-actions">

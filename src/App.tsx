@@ -63,7 +63,6 @@ export function App() {
     renameProfile,
     upsertHotkey,
     deleteHotkey,
-    toggleHotkey,
     duplicateHotkey,
   } = useProfilesStore();
 
@@ -377,6 +376,17 @@ export function App() {
     setShowPreview(newSettings.theme.show_preview);
   };
 
+  // ── Stop running profile when switching to a different one ──────────
+  const handleSelectProfile = useCallback(
+    (id: string) => {
+      if (runningId && runningId !== id) {
+        handleStop();
+      }
+      setActiveId(id);
+    },
+    [runningId, handleStop, setActiveId]
+  );
+
   // ── Wrap handleApply to capture snapshot ───────────────────────────
   const handleApplyAndSnapshot = async (id: string) => {
     await handleApply(id);
@@ -422,7 +432,7 @@ export function App() {
           profiles={profiles}
           activeId={activeId}
           runningId={runningId}
-          onSelect={setActiveId}
+          onSelect={handleSelectProfile}
           onCreate={handleCreateProfile}
           onDelete={handleDeleteProfile}
           onDuplicate={handleDuplicateProfile}
@@ -536,7 +546,6 @@ export function App() {
                   query={query}
                   onEdit={setEditingHk}
                   onDelete={handleDeleteHotkey}
-                  onToggle={(id) => activeId && toggleHotkey(activeId, id)}
                   onDuplicate={(id) => activeId && duplicateHotkey(activeId, id)}
                   onAdd={() => setEditingHk({})}
                 />

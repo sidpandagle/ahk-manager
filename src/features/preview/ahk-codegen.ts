@@ -23,6 +23,10 @@ export function generateAhk(profile: Profile, version: AhkVersion = 1): AhkLine[
     lines.push({ k: "comment", text: `; AutoHotkey v2 syntax` });
   }
   lines.push({ k: "blank" });
+  // Prevents AHK from showing a "replace existing instance?" dialog when the
+  // same temp file is relaunched (e.g. switching profiles).
+  lines.push({ k: "cmd", text: "#SingleInstance Force" });
+  lines.push({ k: "blank" });
 
   const active = profile.hotkeys.filter((h) => h.enabled);
   if (active.length === 0) {
