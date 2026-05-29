@@ -6,7 +6,9 @@ import type { Profile, Hotkey } from "../../lib/types";
 
 function getCommandPreview(h: Hotkey): string {
   if (h.action_type === "always_on_top") return "Always on top";
-  return h.action_value || "";
+  const v = h.action_value || "";
+  // Strip AHK Send syntax so we show just the payload
+  return v.replace(/^Send,\s*/i, "").replace(/^Send\s*\(/i, "");
 }
 
 interface HotkeyTableProps {
