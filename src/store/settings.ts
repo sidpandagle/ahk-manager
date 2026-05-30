@@ -5,6 +5,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   ahk_exe_path: "C:\\Program Files\\AutoHotkey\\v2\\AutoHotkey64.exe",
   launch_profile_id: null,
   start_minimized: false,
+  keep_active_on_close: true,
   theme: {
     accent: "#7c5cff",
     density: "comfortable",

@@ -150,6 +150,21 @@ export function SettingsModal({ profiles, onClose, onSave }: SettingsModalProps)
           />
         </div>
 
+        <div className="flex" style={{ justifyContent: "space-between" }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 500 }}>
+              Keep hotkeys active on close
+            </div>
+            <div style={{ fontSize: 11.5, color: "var(--text-2)", marginTop: 2 }}>
+              AHK process keeps running after the app is closed.
+            </div>
+          </div>
+          <Toggle
+            on={draft.keep_active_on_close}
+            onChange={(v) => updateDraft({ keep_active_on_close: v })}
+          />
+        </div>
+
         {/* ── Appearance ────────────────────────────────────── */}
         <div className="settings-section-label" style={{ marginTop: 8 }}>
           Appearance

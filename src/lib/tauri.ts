@@ -21,8 +21,8 @@ export async function detectAhk(customPath?: string): Promise<AhkInfo> {
 }
 
 /** Write temp .ahk file and spawn the interpreter. Returns PID. */
-export async function applyProfile(ahkSource: string): Promise<number> {
-  return invoke<number>("apply_profile", { ahkSource });
+export async function applyProfile(ahkSource: string, profileId: string): Promise<number> {
+  return invoke<number>("apply_profile", { ahkSource, profileId });
 }
 
 export async function stopRunningScript(): Promise<void> {

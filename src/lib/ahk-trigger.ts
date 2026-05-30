@@ -53,6 +53,20 @@ export function parseTrigger(trigger: string): TriggerToken[] {
   return tokens;
 }
 
+/** Extract the base (unshifted) key from e.code for single-character physical keys */
+function codeToBaseKey(code: string): string | null {
+  const digit = /^Digit(\d)$/.exec(code);
+  if (digit) return digit[1];
+  const letter = /^Key([A-Z])$/.exec(code);
+  if (letter) return letter[1];
+  const symbols: Record<string, string> = {
+    Minus: "-", Equal: "=", BracketLeft: "[", BracketRight: "]",
+    Backslash: "\\", Semicolon: ";", Quote: "'", Backquote: "`",
+    Comma: ",", Period: ".", Slash: "/",
+  };
+  return symbols[code] ?? null;
+}
+
 /** Convert a keydown event into an AHK trigger string */
 export function keyEventToTrigger(e: KeyboardEvent): string | null {
   const mods: string[] = [];
@@ -81,7 +95,11 @@ export function keyEventToTrigger(e: KeyboardEvent): string | null {
   else if (k === "PageDown") main = "PGDN";
   else if (k === "Insert") main = "INSERT";
   else if (k.startsWith("F") && /^F\d+$/.test(k)) main = k;
-  else if (k.length === 1) main = k.toUpperCase();
+  else if (k.length === 1) {
+    // Use the physical key code to avoid shifted characters (e.g. Shift+3 gives
+    // e.key="#" which is also AHK's Win modifier). Fall back to e.key if unknown.
+    main = codeToBaseKey(e.code) ?? k.toUpperCase();
+  }
   else main = k.toUpperCase();
 
   return mods.join("") + main;

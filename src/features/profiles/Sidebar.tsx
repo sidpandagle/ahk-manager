@@ -79,7 +79,6 @@ export function Sidebar({
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onSelect(id);
                       onApply(id);
                     }}
                   >

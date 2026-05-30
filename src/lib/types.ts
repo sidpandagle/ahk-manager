@@ -22,6 +22,7 @@ export interface AppSettings {
   ahk_exe_path: string;
   launch_profile_id: string | null;
   start_minimized: boolean;
+  keep_active_on_close: boolean;
   theme: {
     accent: string;
     density: "tight" | "comfortable" | "spacious";
@@ -33,6 +34,7 @@ export interface AppSettings {
 export interface ProfilesFile {
   profiles: Record<string, Profile>;
   settings: AppSettings;
+  active_session?: { pid: number; profile_id: string };
 }
 
 export interface AhkInfo {

@@ -100,7 +100,7 @@ export function App() {
       const version = versionOverride ?? ahkVersion;
       try {
         const src = flattenLines(generateAhk(target, version));
-        const pid = await applyProfile(src);
+        const pid = await applyProfile(src, id);
         setRunning(id, pid);
         toast.push({
           kind: "success",
@@ -148,19 +148,23 @@ export function App() {
         applyKbdStyle(t.kbd_style);
         setShowPreview(t.show_preview);
 
-        // Auto-apply the launch profile only if AHK exe path is configured.
-        // Attempting to launch without a valid path produces a cryptic OS error.
-        const launchId = rawData.settings.launch_profile_id;
-        const ahkExe = rawData.settings.ahk_exe_path;
-        if (launchId && rawData.profiles[launchId] && ahkExe) {
-          // Derive AHK version directly from infoResult — setAhkInfo hasn't run yet
-          // so the ahkVersion in the handleApply closure is still the initial v1 default.
-          const bootVersion: AhkVersion =
-            infoResult.status === "fulfilled" &&
-            (infoResult.value?.version_major ?? 1) >= 2
-              ? 2
-              : 1;
-          await handleApply(launchId, rawData.profiles, bootVersion);
+        // Restore a session kept alive from the previous run (keep_active_on_close).
+        // If that process is still live, skip auto-launch — AHK is already running.
+        if (rawData.active_session && rawData.profiles[rawData.active_session.profile_id]) {
+          setActiveId(rawData.active_session.profile_id);
+          setRunning(rawData.active_session.profile_id, rawData.active_session.pid);
+        } else {
+          // Auto-apply the launch profile only if AHK exe path is configured.
+          const launchId = rawData.settings.launch_profile_id;
+          const ahkExe = rawData.settings.ahk_exe_path;
+          if (launchId && rawData.profiles[launchId] && ahkExe) {
+            const bootVersion: AhkVersion =
+              infoResult.status === "fulfilled" &&
+              (infoResult.value?.version_major ?? 1) >= 2
+                ? 2
+                : 1;
+            await handleApply(launchId, rawData.profiles, bootVersion);
+          }
         }
       } else {
         // First launch or corrupt file — start with empty state
@@ -376,19 +380,16 @@ export function App() {
     setShowPreview(newSettings.theme.show_preview);
   };
 
-  // ── Stop running profile when switching to a different one ──────────
   const handleSelectProfile = useCallback(
     (id: string) => {
-      if (runningId && runningId !== id) {
-        handleStop();
-      }
       setActiveId(id);
     },
-    [runningId, handleStop, setActiveId]
+    [setActiveId]
   );
 
   // ── Wrap handleApply to capture snapshot ───────────────────────────
   const handleApplyAndSnapshot = async (id: string) => {
+    setActiveId(id);
     await handleApply(id);
     const target = profiles[id];
     if (target) setAppliedSnapshot(JSON.stringify(target.hotkeys));
