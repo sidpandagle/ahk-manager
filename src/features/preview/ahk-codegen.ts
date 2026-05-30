@@ -83,7 +83,7 @@ function generateV2Body(h: Hotkey, lines: AhkLine[]): void {
       break;
     }
     case "run":
-      lines.push({ k: "cmd", text: `    Run("${h.action_value}")` });
+      lines.push({ k: "cmd", text: `    Run("${escapeV2Run(h.action_value)}")` });
       break;
     case "always_on_top":
       lines.push({ k: "cmd", text: `    WinSetAlwaysOnTop(-1, "A")` });
@@ -113,9 +113,17 @@ function upgradeV1LineToV2(line: string): string {
   const sendM = t.match(/^Send,\s+(.+)$/i);
   if (sendM) return line.replace(t, `Send("${sendM[1]}")`);
 
+  // Send value (no comma — AHK v1 also accepts this form)  →  Send("value")
+  const sendNoCommaM = t.match(/^Send\s+(.+)$/i);
+  if (sendNoCommaM) return line.replace(t, `Send("${sendNoCommaM[1]}")`);
+
   // Run, value  →  Run("value")
   const runM = t.match(/^Run,\s+(.+)$/i);
   if (runM) return line.replace(t, `Run("${runM[1]}")`);
+
+  // Run value (no comma)  →  Run("value")
+  const runNoCommaM = t.match(/^Run\s+(.+)$/i);
+  if (runNoCommaM) return line.replace(t, `Run("${runNoCommaM[1]}")`);
 
   // Winset, Alwaysontop, ...  →  WinSetAlwaysOnTop(-1, "A")
   if (/^Winset,\s*Alwaysontop/i.test(t)) {
@@ -139,6 +147,12 @@ function escapeV2Text(s: string): string {
     .replace(/"/g, '`"')
     .replace(/\n/g, "`n")
     .replace(/\t/g, "`t");
+}
+
+function escapeV2Run(s: string): string {
+  // Only escape backtick (AHK v2 escape char) and double quote (string delimiter).
+  // Backslashes in paths are literal in AHK v2 strings — do not escape them.
+  return s.replace(/`/g, "``").replace(/"/g, '`"');
 }
 
 // ── Flatten to plain string ─────────────────────────────────────────

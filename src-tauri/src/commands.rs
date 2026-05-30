@@ -262,11 +262,30 @@ pub fn apply_profile(ahk_source: String, profile_id: String, state: State<'_, Ap
 pub fn stop_running_script(state: State<'_, AppState>) -> Result<(), String> {
     let mut child = state.child.lock().unwrap();
     if let Some(ref mut c) = *child {
-        c.kill().map_err(|e| e.to_string())?;
+        #[cfg(windows)]
+        win::close_process_windows(c.id());
+        let _ = c.kill();
         let _ = c.wait();
     }
     *child = None;
     *state.running_profile_id.lock().unwrap() = None;
+
+    // Also kill any session-restored process (keep_active_on_close from a previous
+    // session) — state.child is None for those, but the PID is in the session file.
+    if let Ok(session_path) = running_session_path() {
+        if session_path.exists() {
+            if let Ok(content) = std::fs::read_to_string(&session_path) {
+                if let Ok(session) = serde_json::from_str::<serde_json::Value>(&content) {
+                    if let Some(pid) = session.get("pid").and_then(|v| v.as_u64()).map(|v| v as u32) {
+                        #[cfg(windows)]
+                        win::kill_process_by_pid(pid);
+                    }
+                }
+            }
+            let _ = std::fs::remove_file(&session_path);
+        }
+    }
+
     Ok(())
 }
 
